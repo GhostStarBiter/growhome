@@ -25,6 +25,13 @@ void encoder_reset_ticks(void)
 
 
 //--------------------------------------------------------------------------------------------------
+void encoder_deactivate_button(void)
+{
+  encoder.button_activated = false;
+}
+
+
+//--------------------------------------------------------------------------------------------------
 bool encoder_button_activated(void)
 {
   return encoder.button_activated;

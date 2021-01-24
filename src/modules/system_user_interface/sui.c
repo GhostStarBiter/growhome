@@ -108,6 +108,13 @@ static void system_user_interface_set_active_display(display_screen_t* p_set_scr
 
   sui.active_display = p_set_screen;
 
+  // clean display buffer
+  for(i = 0; i < SUI_DISPLAY_BUFFER_SIZE; i++)
+  {
+    sui.display_buffer[i] = ' ';
+  }
+
+
   // prepare new display buffer
   for(i = 0; i < sui.active_display->items_cnt; i++)
   {
@@ -118,25 +125,25 @@ static void system_user_interface_set_active_display(display_screen_t* p_set_scr
     // by multiplying x_pos by y_pos
     // the y_pos(ROW) must be non-zero(but numeration in display is from 0)
 
-    if(y_pos < 1) // first row first symbol
+    if(y_pos < 1)
     {
       y_pos = 1;
     }
     else
     {
-      if(x_pos < 1)
-      {
-        x_pos = 1;
-      }
-      x_pos += 15;
+//      if(x_pos < 1)
+//      {
+//        x_pos = 1;
+//      }
+      x_pos += 16;
     }
 
     buf_position = x_pos * y_pos;
-    strcpy(&sui.display_buffer[buf_position], sui.active_display->item[i].p_text);
+    strncpy((char*) &sui.display_buffer[buf_position], sui.active_display->item[i].p_text, strlen(sui.active_display->item[i].p_text));
   }
 
   // clean-up all null-terminator characters
-  for(i = 0; i < (SUI_DISPLAY_BUFFER_SIZE - 1); i++)
+  for(i = 0; i < SUI_DISPLAY_BUFFER_SIZE; i++)
   {
     if(sui.display_buffer[i] == '\0')
     {
@@ -240,7 +247,6 @@ static void system_user_update_display(void)
   // ***
   display = sui.active_display;
 
-  lcd216_puts(0,0,sui.display_buffer);
 
 //  for(uint8_t index=0; index < display->items_cnt; index++)
 //  {
@@ -251,16 +257,14 @@ static void system_user_update_display(void)
 //      display->item[index].data = display->item[index].update_data(item_id);
 //    }
 //
-//    lcd216_puts(display->item[index].text_position.x,
-//                display->item[index].text_position.y,
-//                display->item[index].p_text);
-//
 //    // ***
 //    if(display->item[index].type == DISPLAY_ITEM_NUMERIC)
 //    {
 //      item_text_len = strlen(display->item[index].p_text);
 //
 //      item_data_text = convert_num_to_str(display->item[index].data);
+//
+//      strncpy(sui.display_buffer);
 //
 //      lcd216_puts(display->item[index].text_position.x + item_text_len,
 //                  display->item[index].text_position.y,
@@ -273,6 +277,8 @@ static void system_user_update_display(void)
 //      // and item displayed after it's update
 //    }
 //  }
+
+  lcd216_puts(0, 0, (char*) sui.display_buffer);
 
 }
 
@@ -496,23 +502,23 @@ static void sui_init_user_menu(void)
 static void sui_main_screen_init(void)
 {
   // *** Main display
-  main_screen_temperature.id                    = CURRENT_AIR_TEMP;
-  main_screen_temperature.type                  = DISPLAY_ITEM_NUMERIC;
-  main_screen_temperature.p_text                = "TMP:";
-  main_screen_temperature.text_position.x       = 0;
-  main_screen_temperature.text_position.y       = LCD216_FIRST_ROW;
-  main_screen_temperature.update_data           = sui_update_screen_item_data;
-  main_screen_temperature.data                  = sui_update_screen_item_data(main_screen_temperature.id);
-  main_screen_temperature.action                = sui_item_action;
+  main_screen_temperature.id                = CURRENT_AIR_TEMP;
+  main_screen_temperature.type              = DISPLAY_ITEM_NUMERIC;
+  main_screen_temperature.p_text            = "TMP:";
+  main_screen_temperature.text_position.x   = 0;
+  main_screen_temperature.text_position.y   = LCD216_FIRST_ROW;
+  main_screen_temperature.update_data       = sui_update_screen_item_data;
+  main_screen_temperature.data              = sui_update_screen_item_data(main_screen_temperature.id);
+  main_screen_temperature.action            = sui_item_action;
 
-  main_screen_light.id                                  = LIGHT_STATUS;
-  main_screen_light.type                                = DISPLAY_ITEM_TEXTUAL;
-  main_screen_light.p_text                              = "LT:";
-  main_screen_light.text_position.x                     = 7;
-  main_screen_light.text_position.y                     = LCD216_FIRST_ROW;
-  main_screen_light.update_data                         = sui_update_screen_item_data;
-  main_screen_light.data                                = sui_update_screen_item_data(main_screen_light.id);
-  main_screen_light.action                              = sui_item_action;
+  main_screen_light.id                      = LIGHT_STATUS;
+  main_screen_light.type                    = DISPLAY_ITEM_TEXTUAL;
+  main_screen_light.p_text                  = "LT:";
+  main_screen_light.text_position.x         = 7;
+  main_screen_light.text_position.y         = LCD216_FIRST_ROW;
+  main_screen_light.update_data             = sui_update_screen_item_data;
+  main_screen_light.data                    = sui_update_screen_item_data(main_screen_light.id);
+  main_screen_light.action                  = sui_item_action;
 
   water_level.id                            = WATER_LEVEL;
   water_level.type                          = DISPLAY_ITEM_NUMERIC;
@@ -749,7 +755,7 @@ static void sui_set_time_screen_init(void)
   set_time_screen_hours.action            = sui_item_action;
 
   set_time_screen_minutes.id              = CURRENT_TIME_MINS;
-  set_time_screen_minutes.type              = DISPLAY_ITEM_NUMERIC;
+  set_time_screen_minutes.type            = DISPLAY_ITEM_NUMERIC;
   set_time_screen_minutes.p_text          = "59";
   set_time_screen_minutes.text_position.x = 5;
   set_time_screen_minutes.text_position.y = LCD216_SECOND_ROW;
@@ -778,6 +784,7 @@ static void sui_go_to_prev_screen(int16_t dummy)
   lcd216_clear();
   sui.active_item_index = 0;
   system_user_interface_set_active_display(sui.active_display->prev);
+  encoder_deactivate_button();
 }
 
 
@@ -788,5 +795,6 @@ static void sui_go_to_next_screen(int16_t dummy)
   lcd216_clear();
   sui.active_item_index = 0;
   system_user_interface_set_active_display(sui.active_display->next);
+  encoder_deactivate_button();
 }
 

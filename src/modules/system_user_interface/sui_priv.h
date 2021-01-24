@@ -86,11 +86,11 @@ typedef struct {
 } user_settings_t;
 
 
-typedef struct {
+// structure controlled by encoder input which is interrupt-processed
+typedef volatile struct {
     // *** INTERNAL VARIABLES
-    char              display_buffer[SUI_DISPLAY_BUFFER_SIZE];
+    char              display_buffer[SUI_DISPLAY_BUFFER_SIZE + 1];
     uint8_t           active_item_index;
-    int8_t            menu_iterator;
 
     // *** OBJECTS
     display_screen_t* active_display;
