@@ -42,7 +42,7 @@ void schedule_update
     FunctionalState *greenhouse_water_pump_state
 )
 {
-  rtc_time_t current_time = mcu_rtc_get_time();
+  mcu_time_t current_time = mcu_rtc_get_time();
   // check day's 24 hours elapsed
   if(current_time.hour > 23)
   {
@@ -83,7 +83,7 @@ static void schedule_switch_date(void)
 //--------------------------------------------------------------------------------------------------
 static void check_light_schedule(
     weekday_t       current_day,
-    rtc_time_t      current_time,
+    mcu_time_t      current_time,
     FunctionalState *greenhouse_light_state)
 {
   // Check LIGHT schedule for today
@@ -130,7 +130,7 @@ static void check_light_schedule(
 //--------------------------------------------------------------------------------------------------
 static void check_water_schedule(
     weekday_t       current_day,
-    rtc_time_t      current_time,
+    mcu_time_t      current_time,
     FunctionalState *greenhouse_water_pump_state)
 {
 

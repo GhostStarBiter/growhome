@@ -42,17 +42,9 @@ void growbox_system_init(void)
   onewire_bus_init_struct.timer        = ONEWIRE_TIMER;
   onewire_bus_init_struct.gpio_port    = ONEWIRE_PORT;
   onewire_bus_init_struct.gpio_pin     = ONEWIRE_PIN;
-  onewire_bus_init_struct.EXTIchannel  = ONEWIRE_EXTI_CHANNEL;
+  onewire_bus_init_struct.EXTIchannel  = ONEWIRE_EXTI_IRQn;
   onewire_bus_init_struct.EXTI_line    = ONEWIRE_EXTI_LINE;
   onewire_init(&onewire_bus_init_struct);
-
-  // ***
-  triac_heater_init_struct.timer                = TRIAC_TIMER;
-  triac_heater_init_struct.zerocross_exti_line  = MAINS_ZEROCROSS_DETECT_EXTI_LINE;
-  triac_heater_init_struct.zerocross_gpio_port  = MAINS_ZEROCROSS_DETECT_PORT;
-  triac_heater_init_struct.zerocross_gpio_pin   = MAINS_ZEROCROSS_DETECT_PIN;
-  triac_heater_init(&triac_heater_init_struct);
-  triac_set_heater_power(0);
 
   // ***
   servo_init_struct.timer          = SERVO_TIMER;
@@ -78,6 +70,8 @@ void growbox_control_rtos_task(void *pvParameters)
 {
   const TickType_t  x_growbox_task_timeout_ms = GROWBOX_TASK_TIMEOUT;
   TickType_t        x_last_wake_time;
+  uint16_t          timeout = 10;
+  uint16_t          ms_counter = 0;
 
   growbox_system_init();
 
@@ -88,25 +82,19 @@ void growbox_control_rtos_task(void *pvParameters)
     // ***
     vTaskDelayUntil(&x_last_wake_time, x_growbox_task_timeout_ms);
 
-    // ***
-    growbox_update_measurements();
-
-    // ***
-    growbox_control();
+//    // ***
+//    growbox_update_measurements();
+//
+//    // ***
+//    growbox_control();
   }
 
 }
 
 //--------------------------------------------------------------------------------------------------
-result_t growbox_set_temperature(uint8_t set_temperature)
+void growbox_set_temperature(uint8_t set_temperature)
 {
-  result_t operation_result = result_success;
-
-  // @todo: check input parameter for allowed range (0 .. 40)
-
   growbox.desired_air_temp = set_temperature;
-
-  return operation_result;
 }
 
 
@@ -119,10 +107,13 @@ static void growbox_control(void)
                       &growbox.water_pump_status);
   }
 
+  // ***
   growbox_control_temperature();
 
-  //growbox_control_water_supply();
+  // ***
+  growbox_control_water_supply();
 
+  // ***
   growbox_control_light();
 
   //growbox_control_communication();
@@ -142,9 +133,15 @@ static void growbox_control_temperature(void)
   {
     growbox_set_air_mixing_status(ENABLE);
     servo_set_angle(SERVO_AIR_EXCHANGE_ANGLE);
+
+    // set income air ventilator power
+    income_air_intensity = abs(growbox.delta_temp) * 10;                        // 10 - magic number @todo: define coefficient
+    growbox_set_income_air_intensity(income_air_intensity);
+
     // run PID regulator to set heater power
 
-    // turn off the heater
+    // turn on the heater
+    growbox.air_heater_power = 25;                                              // @todo: magic number. TESTING PURPOSES ONLY!
     triac_set_heater_power(growbox.air_heater_power);
   }
   // AIR COOL DOWN

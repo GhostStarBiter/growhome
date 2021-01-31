@@ -18,10 +18,10 @@ typedef enum{
 } weekday_t;
 
 typedef struct{
-    rtc_time_t    on_time;            // used for light/water schedule
-    rtc_time_t    expected_endtime;   // used for light/water schedule control
-    uint32_t  duration_sec;       // used for light/water schedule
-    uint32_t  interval_minutes;   // used for water schedule
+    mcu_time_t  on_time;            // used for light/water schedule
+    mcu_time_t  expected_endtime;   // used for light/water schedule control
+    uint32_t    duration_sec;       // used for light/water schedule
+    uint32_t    interval_minutes;   // used for water schedule
 } activity_schedule_t;
 
 

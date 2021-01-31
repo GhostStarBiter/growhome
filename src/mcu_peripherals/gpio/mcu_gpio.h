@@ -16,22 +16,23 @@ void mcu_gpio_init(void);
 //--------------------------------------------------------------------------------------------------
 void mcu_gpio_set_debug_pin
 (
-    uint8_t ub_status
+    FunctionalState dbg_pin_status
 );
 
 
 //--------------------------------------------------------------------------------------------------
+/// @brief  Debug pin toggle function
 //--------------------------------------------------------------------------------------------------
 void mcu_gpio_toggle_debug_pin(void);
 
 
 //--------------------------------------------------------------------------------------------------
 /// @brief  Setter for On-Board LED status
-/// @param  On-Board LED status to set (ENABLE/DISABLE or SET/RESET)
+/// @param  On-Board LED status to set (ENABLE/DISABLE or ON/OFF)
 //--------------------------------------------------------------------------------------------------
 void mcu_gpio_set_led_status
 (
-    uint8_t ub_status
+    FunctionalState led_status
 );
 
 
@@ -58,21 +59,32 @@ uint16_t mcu_gpio_get_onewire_pin(void);
 
 //--------------------------------------------------------------------------------------------------
 /// @brief  Setter of Light (lamp) status
-/// @param  New status of Light (ENABLE/DISBALE)
+/// @param  New status of Light (ENABLE/DISABLE)
 //--------------------------------------------------------------------------------------------------
 void mcu_gpio_set_light
 (
-    FunctionalState e_light_state
+    FunctionalState light_state
 );
 
 
 //--------------------------------------------------------------------------------------------------
 /// @brief  Setter of Air Mixing ventilator status
-/// @param  New status of Air Mixing ventilator (ENABLE/DISBALE)
+/// @param  New status of Air Mixing ventilator (ENABLE/DISABLE)
 //--------------------------------------------------------------------------------------------------
 void mcu_gpio_set_air_mixing_status
 (
-    FunctionalState e_air_mixing_status
+    FunctionalState air_mixing_status
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Setter of Heater status
+/// @param  New Heater status (ENABLE/DISABLE)
+//--------------------------------------------------------------------------------------------------
+void mcu_gpio_set_heater_status
+(
+    FunctionalState heater_state
+);
+
 
 #endif //MCU_GPIO_H

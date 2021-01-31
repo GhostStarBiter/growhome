@@ -17,7 +17,7 @@ typedef struct{
 } day_plan_t;
 
 typedef struct{
-  rtc_time_t  current_time;
+  mcu_time_t  current_time;
   weekday_t   current_day;
   day_plan_t  day[DAYS_IN_WEEK];
 } schedule_t;
@@ -40,7 +40,7 @@ static void schedule_switch_date(void);
 //------------------------------------------------------------------------------
 static void check_light_schedule(
     weekday_t       current_day,
-    rtc_time_t      current_time,
+    mcu_time_t      current_time,
     FunctionalState *greenhouse_light_state
 );
 
@@ -50,7 +50,7 @@ static void check_light_schedule(
 //------------------------------------------------------------------------------
 static void check_water_schedule(
     weekday_t       current_day,
-    rtc_time_t      current_time,
+    mcu_time_t      current_time,
     FunctionalState *greenhouse_water_pump_state
 );
 

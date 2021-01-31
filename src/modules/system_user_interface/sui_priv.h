@@ -81,7 +81,7 @@ typedef struct screen{
 
 
 typedef struct {
-    rtc_time_t  set_time;             //@todo maybe (char) and convert to numbers?
+    mcu_time_t  set_time;             //@todo maybe (char) and convert to numbers?
     uint8_t     ip_address[4];        // [0..255] [0..225] [0..225] [0..225]
 } user_settings_t;
 

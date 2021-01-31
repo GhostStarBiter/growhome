@@ -9,9 +9,10 @@
 
 //  If set to 1
 //  don't remap SWD pins for LCD216 usage
-#define APPLICATION_DEBUG                   0
+#define APPLICATION_DEBUG                   1
 
 
+//  APPLICATION
 #define APPLICATION_NAME                    "GROWHOME"
 #define APPLICATION_NAME_POS_X              4
 #define APPLICATION_NAME_POS_Y              0
@@ -30,7 +31,7 @@
 // ***
 // Task call intervals
 #define INTERFACE_TASK_TIMEOUT              10  // [ticks] == ms
-#define SERVICE_TASK_TIMEOUT                5   // [ticks] == ms
+#define SERVICE_TASK_TIMEOUT                1000   // [ticks] == ms
 #define GROWBOX_TASK_TIMEOUT                1   // [tick] == ms
 
 
@@ -100,7 +101,7 @@
 #define PWM_CONTROL_PORT                    GPIOA
 #define PWM_WATER_PUMP_PIN                  GPIO_Pin_6
 #define WATER_PUMP_CTRL_CHANNEL_FLAG        TIM_FLAG_CC1
-#define WATER_PUMP_INITIAL_POWER            70                                          // [%]
+#define WATER_PUMP_INITIAL_POWER            50                                          // [%]
 
 //  PWM Air Input Green House (AF TIM3_CH2)
 #define PWM_AIR_INPUT_PIN                   GPIO_Pin_7
@@ -115,15 +116,9 @@ typedef enum {
   AIR_INPUT   = 2
 } PWM_Channel_t;
 
-// Triac control (AF TIM1_CH1)
+// Triac control
 #define TRIAC_GPIO_PORT                     GPIOA
 #define TRIAC_AIR_HEATER_PIN                GPIO_Pin_8
-#define UPDATE_AIR_HEATER_POWER_FLAG        TIM_FLAG_CC1
-
-#define TRIAC_TIMER                         TIM1
-#define TRIAC_TIMER_PRESCALER               ((SystemCoreClock/1000000) - 1)            // prescaler for timer on APB2 bus to tick @1MHz
-#define TRIAC_TIMER_PERIOD                  10000                                      // 1us * 10000 = 10 ms -> mains voltage halfwave duration
-
 
 //  SIM800 UART
 #define SIM800_PORT                         GPIOA
@@ -167,12 +162,13 @@ typedef enum {
 #define ONEWIRE_PORT                        GPIOB
 #define ONEWIRE_PIN                         GPIO_Pin_2
 
-#define ONEWIRE_TIMER                       TIM2
-#define ONEWIRE_TIMER_IRQHandler            TIM2_IRQHandler
+#define ONEWIRE_TIMER                       TIM4
+#define ONEWIRE_TIMER_IRQn                  TIM4_IRQn
+#define ONEWIRE_TIMER_IRQHandler            TIM4_IRQHandler
 
 #define ONEWIRE_PIN_SOURCE                  GPIO_PinSource2
 #define ONEWIRE_EXTI_LINE                   EXTI_Line2
-#define ONEWIRE_EXTI_CHANNEL                EXTI2_IRQn
+#define ONEWIRE_EXTI_IRQn                   EXTI2_IRQn
 #define ONEWIRE_EXTI_IRQHandler             EXTI2_IRQHandler
 
 // Mains Voltage zero-cross

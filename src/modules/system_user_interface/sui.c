@@ -242,41 +242,75 @@ static void system_user_update_display(void)
   ctrl_item_id_t    item_id;
   display_screen_t* display;
   uint8_t           item_text_len = 0;
-  char*             item_data_text;
+  char*             string_item_data;
+  uint8_t           buff_pos;
+  uint8_t           m, n;
 
   // ***
   display = sui.active_display;
 
 
-//  for(uint8_t index=0; index < display->items_cnt; index++)
-//  {
-//    item_id = display->item[index].id;
-//
-//    if(display->item[index].update_data != NULL)
-//    {
-//      display->item[index].data = display->item[index].update_data(item_id);
-//    }
-//
-//    // ***
-//    if(display->item[index].type == DISPLAY_ITEM_NUMERIC)
-//    {
-//      item_text_len = strlen(display->item[index].p_text);
-//
-//      item_data_text = convert_num_to_str(display->item[index].data);
-//
-//      strncpy(sui.display_buffer);
-//
-//      lcd216_puts(display->item[index].text_position.x + item_text_len,
-//                  display->item[index].text_position.y,
-//                  item_data_text);
-//    }
-//    else
-//    {
-//      // do nothing
-//      // Update of textual items done in update_data function
-//      // and item displayed after it's update
-//    }
-//  }
+  for(uint8_t index=0; index < display->items_cnt; index++)
+  {
+    // display buffer insert position
+    buff_pos = 0;
+
+    item_id = display->item[index].id;
+
+    if(display->item[index].update_data != NULL)
+    {
+      display->item[index].data = display->item[index].update_data(item_id);
+    }
+
+    // Calculate buffer insert position
+    buff_pos = display->item[index].text_position.x;
+    // correct buffer insert position according to item's position row
+    (display->item[index].text_position.y > 0) ? (buff_pos += 16) : (buff_pos);
+
+    // Copy text of item to buffer
+    n = 0;
+    while(display->item[index].p_text[n])
+    {
+      sui.display_buffer[buff_pos + n] = display->item[index].p_text[n];
+      n++;
+    }
+
+    // ***
+    if(display->item[index].type == DISPLAY_ITEM_NUMERIC)
+    {
+      // length of textual specifier of item (TMP, WTR etc.)
+      item_text_len = strlen(display->item[index].p_text);
+
+      // string with item data(numeric) converted to text
+      string_item_data = convert_num_to_str(display->item[index].data);
+
+      buff_pos = display->item[index].text_position.x + item_text_len;
+      // correct buffer insert position according to item's position row
+      (display->item[index].text_position.y > 0) ? (buff_pos += 16) : (buff_pos);
+
+      while(string_item_data[m])
+      {
+        sui.display_buffer[buff_pos + m] = string_item_data[m];
+        m++;
+      }
+    }
+    else
+    {
+      // Display item type is TEXTUAL
+      // The text of such item will be changed
+      // in item's action function and
+      // copied to display buffer in the code above
+    }
+  }
+
+  // clean-up all null-terminator characters
+  for(uint8_t l = 0; l < SUI_DISPLAY_BUFFER_SIZE; l++)
+  {
+    if(sui.display_buffer[l] == '\0')
+    {
+      sui.display_buffer[l] = ' ';
+    }
+  }
 
   lcd216_puts(0, 0, (char*) sui.display_buffer);
 
@@ -401,7 +435,7 @@ void sui_item_action(int16_t encoder_ticks)
 static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
 {
   uint16_t    updated_data = 0;
-  rtc_time_t  time;
+  mcu_time_t  time;
 
   switch(item_id)
   {
@@ -513,7 +547,7 @@ static void sui_main_screen_init(void)
 
   main_screen_light.id                      = LIGHT_STATUS;
   main_screen_light.type                    = DISPLAY_ITEM_TEXTUAL;
-  main_screen_light.p_text                  = "LT:";
+  main_screen_light.p_text                  = " ";
   main_screen_light.text_position.x         = 7;
   main_screen_light.text_position.y         = LCD216_FIRST_ROW;
   main_screen_light.update_data             = sui_update_screen_item_data;
@@ -530,8 +564,8 @@ static void sui_main_screen_init(void)
   water_level.action                        = sui_item_action;
 
   time_hours.id                             = CURRENT_TIME_HOURS;
-  time_hours.type                           = DISPLAY_ITEM_TEXTUAL;       // @todo: change to DISPLAY_ITEM_NUMERIC!!!!!
-  time_hours.p_text                         = "23:";                      // @todo: leave empty place holder. Set numeric value in update function
+  time_hours.type                           = DISPLAY_ITEM_NUMERIC;       // @todo: change to DISPLAY_ITEM_NUMERIC!!!!!
+  time_hours.p_text                         = " ";                      // @todo: leave empty place holder. Set numeric value in update function
   time_hours.text_position.x                = 7;
   time_hours.text_position.y                = LCD216_SECOND_ROW;
   time_hours.update_data                    = sui_update_screen_item_data;
@@ -539,8 +573,8 @@ static void sui_main_screen_init(void)
   time_hours.action                         = sui_item_action;
 
   time_mins.id                              = CURRENT_TIME_MINS;
-  time_mins.type                            = DISPLAY_ITEM_TEXTUAL;       // @todo: change to DISPLAY_ITEM_NUMERIC!!!!!
-  time_mins.p_text                          = "59";                       // @todo: leave empty place holder. Set numeric value in update function
+  time_mins.type                            = DISPLAY_ITEM_NUMERIC;       // @todo: change to DISPLAY_ITEM_NUMERIC!!!!!
+  time_mins.p_text                          = " ";                       // @todo: leave empty place holder. Set numeric value in update function
   time_mins.text_position.x                 = 10;
   time_mins.text_position.y                 = LCD216_SECOND_ROW;
   time_mins.update_data                     = sui_update_screen_item_data;
@@ -747,7 +781,7 @@ static void sui_set_time_screen_init(void)
 
   set_time_screen_hours.id                = CURRENT_TIME_HOURS;
   set_time_screen_hours.type              = DISPLAY_ITEM_NUMERIC;
-  set_time_screen_hours.p_text            = "23";
+  set_time_screen_hours.p_text            = " ";
   set_time_screen_hours.text_position.x   = 2;
   set_time_screen_hours.text_position.y   = LCD216_SECOND_ROW;
   set_time_screen_hours.update_data       = sui_update_screen_item_data;
@@ -756,7 +790,7 @@ static void sui_set_time_screen_init(void)
 
   set_time_screen_minutes.id              = CURRENT_TIME_MINS;
   set_time_screen_minutes.type            = DISPLAY_ITEM_NUMERIC;
-  set_time_screen_minutes.p_text          = "59";
+  set_time_screen_minutes.p_text          = " ";
   set_time_screen_minutes.text_position.x = 5;
   set_time_screen_minutes.text_position.y = LCD216_SECOND_ROW;
   set_time_screen_minutes.update_data     = sui_update_screen_item_data;

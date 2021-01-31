@@ -19,9 +19,13 @@ uint8_t water_get_level(void);
 
 
 //--------------------------------------------------------------------------------------------------
-/// @brief  Set water pump status ENABLED/DISABLED
+/// @brief  Set water pump power in percents
+/// @param  Water pump power in percents
 //--------------------------------------------------------------------------------------------------
-void water_pump_set_status(FunctionalState pump_state);
+void water_set_pump_power
+(
+    uint8_t power_percents
+);
 
 
 

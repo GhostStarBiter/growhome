@@ -6,5 +6,10 @@
 
 #include "mcu_rtc.h"
 
+typedef struct {
+  uint32_t    counter;
+  mcu_time_t  current;
+} mcu_rtc_t;
+
 
 #endif // MCU_RTC_PRIV_H

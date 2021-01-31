@@ -4,49 +4,12 @@
 //--------------------------------------------------------------------------------------------------
 void mcu_tim_init(void)
 {
-  init_triac_timer();
-
   init_servo_timer();
 
   init_pwm_timer();
 
   //init_onewire_timer();
 
-}
-
-
-//--------------------------------------------------------------------------------------------------
-static void init_triac_timer(void)
-{
-  TIM_TimeBaseInitTypeDef sTimBase50Hz;
-  TIM_OCInitTypeDef sOutputChannelInit;
-
-  sTimBase50Hz.TIM_ClockDivision       = TIM_CKD_DIV1;
-  sTimBase50Hz.TIM_CounterMode         = TIM_CounterMode_Up;
-  sTimBase50Hz.TIM_Period              = TRIAC_TIMER_PERIOD;
-  sTimBase50Hz.TIM_Prescaler           = TRIAC_TIMER_PRESCALER;
-  sTimBase50Hz.TIM_RepetitionCounter   = 0;
-  TIM_TimeBaseInit(TRIAC_TIMER, &sTimBase50Hz);
-
-  TIM_OCStructInit(&sOutputChannelInit);
-
-  sOutputChannelInit.TIM_OCIdleState  = TIM_OCIdleState_Set;
-  sOutputChannelInit.TIM_OCMode       = TIM_OCMode_PWM1;
-  sOutputChannelInit.TIM_OCPolarity   = TIM_OCPolarity_Low;
-  sOutputChannelInit.TIM_OutputState  = TIM_OutputState_Enable;
-
-  // TRIAC control channel
-  TIM_OC1Init(TRIAC_TIMER, &sOutputChannelInit);
-
-  TIM_CtrlPWMOutputs(TRIAC_TIMER, ENABLE);
-  TIM_Cmd(TRIAC_TIMER, ENABLE);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-TIM_TypeDef* mcu_timer_triac(void)
-{
-  return TRIAC_TIMER;
 }
 
 
@@ -68,6 +31,7 @@ static void init_servo_timer(void)
   sOutputChannelInit.TIM_OCMode       = TIM_OCMode_PWM1;
   sOutputChannelInit.TIM_OCPolarity   = TIM_OCPolarity_High;
   sOutputChannelInit.TIM_OutputState  = TIM_OutputState_Enable;
+  sOutputChannelInit.TIM_Pulse        = 0;
 
   //  channel 1 - servo drive control
   TIM_OC1Init(SERVO_TIMER, &sOutputChannelInit);
@@ -103,7 +67,7 @@ static void init_pwm_timer(void)
   sOutputChannelInit.TIM_OCMode       = TIM_OCMode_PWM1;
   sOutputChannelInit.TIM_OCPolarity   = TIM_OCPolarity_High;
   sOutputChannelInit.TIM_OutputState  = TIM_OutputState_Enable;
-  sOutputChannelInit.TIM_Pulse        = 0;
+  //sOutputChannelInit.TIM_Pulse        = 0;
 
   //  channel 1 - water pump regulation
   TIM_OC1Init(PWM_CONTROL_TIMER, &sOutputChannelInit);
@@ -112,6 +76,8 @@ static void init_pwm_timer(void)
   //  channel 2 - air mix intensity regulation
   TIM_OC2Init(PWM_CONTROL_TIMER, &sOutputChannelInit);
   TIM_CCxCmd(PWM_CONTROL_TIMER, TIM_Channel_2, TIM_CCx_Enable);
+
+  TIM_ITConfig(PWM_CONTROL_TIMER, TIM_IT_CC2, ENABLE);
 
   TIM_CtrlPWMOutputs(PWM_CONTROL_TIMER, ENABLE);
   TIM_Cmd(PWM_CONTROL_TIMER, ENABLE);
@@ -154,7 +120,7 @@ void mcu_pwm_timer_set_channel_pulse_width(PWM_Channel_t pwm_channel, uint8_t pu
       if(converted_pulse_width > 0)
       {
         // disable compare channel 2
-        PWM_CONTROL_TIMER->CCER &= (uint16_t)(~(uint16_t)TIM_CCER_CC2E);
+        //PWM_CONTROL_TIMER->CCER &= (uint16_t)(~(uint16_t)TIM_CCER_CC2E);
         // set new pulse width
         PWM_CONTROL_TIMER->CCR2 = converted_pulse_width;
         // enable compare channel 2
@@ -208,36 +174,6 @@ void TIM1_UP_IRQHandler(void)
   {
     TIM_ClearITPendingBit(TIM1, TIM_FLAG_Update);
 
-  }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-void TIM1_CC_IRQHandler(void)
-{
-  // Capture-Compare Channel 1 - TRIAC control
-  // AIR HEATER
-  if(TIM_GetFlagStatus(TRIAC_TIMER, UPDATE_AIR_HEATER_POWER_FLAG) == SET)
-  {
-    TIM_ClearITPendingBit(TRIAC_TIMER, TIM_IT_CC1);
-  }
-
-  // Capture-Compare Channel 2
-  if(TIM_GetFlagStatus(TRIAC_TIMER, TIM_FLAG_CC2) == SET)
-  {
-    TIM_ClearITPendingBit(TRIAC_TIMER, TIM_IT_CC2);
-  }
-
-  // Capture-Compare Channel 3
-  if(TIM_GetFlagStatus(TRIAC_TIMER, TIM_FLAG_CC3) == SET)
-  {
-    TIM_ClearITPendingBit(TRIAC_TIMER, TIM_IT_CC3);
-  }
-
-  // Capture-Compare Channel 4
-  if(TIM_GetFlagStatus(TRIAC_TIMER, TIM_FLAG_CC4) == SET)
-  {
-    TIM_ClearITPendingBit(TRIAC_TIMER, TIM_IT_CC4);
   }
 }
 

@@ -5,8 +5,8 @@ water_t water;
 //--------------------------------------------------------------------------------------------------
 void water_init(void)
 {
-  water.pump_power = WATER_PUMP_INITIAL_POWER;
-  water_pump_set_status(DISABLE);
+  (void) water_get_level();
+  water_set_pump_power(WATER_PUMP_INITIAL_POWER);
 }
 
 
@@ -23,19 +23,23 @@ uint8_t water_get_level(void)
 
 
 //--------------------------------------------------------------------------------------------------
-void water_pump_set_status(FunctionalState pump_state)
+void water_set_pump_power(uint8_t power_percents)
 {
-  water.pump_status = pump_state;
-
-  switch(pump_state)
+  if(power_percents > 100)
   {
-    case ENABLE:
-      mcu_pwm_timer_set_channel_pulse_width(WATER_PUMP, water.pump_power);
-    break;
+    power_percents = 100;
+  }
 
-    case DISABLE:
-    default:
-      mcu_pwm_timer_set_channel_pulse_width(WATER_PUMP, 0);
-    break;
+  water.pump_power = power_percents;
+
+  mcu_pwm_timer_set_channel_pulse_width(WATER_PUMP, water.pump_power);
+
+  if(water.pump_power)
+  {
+    water.pump_status = ENABLE;
+  }
+  else
+  {
+    water.pump_status = DISABLE;
   }
 }

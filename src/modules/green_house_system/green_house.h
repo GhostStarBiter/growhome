@@ -51,6 +51,7 @@ uint8_t growbox_get_mixed_air_temp(void);
 //--------------------------------------------------------------------------------------------------
 uint8_t growbox_get_water_level(void);
 
+
 //--------------------------------------------------------------------------------------------------
 /// @brief  Setter of Growbox control mode
 /// @param  Control mode - MANUAL/AUTOMATIC
@@ -58,6 +59,16 @@ uint8_t growbox_get_water_level(void);
 void growbox_set_control_mode
 (
     control_mode_t set_control_mode
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Setter of Growbox Air's temeprature inside
+/// @param  Desired temperature in Celsius degrees
+//--------------------------------------------------------------------------------------------------
+void growbox_set_temperature
+(
+    uint8_t set_temperature
 );
 
 

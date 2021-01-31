@@ -49,7 +49,7 @@ void triac_set_heater_power(uint16_t set_power_percents)
 
   if(set_power_percents > 0)
   {
-	triac_heater.timer->CCR1 = triac_heater_convert_power(set_power_percents);
+    triac_heater.timer->CCR1 = triac_heater_convert_power(set_power_percents);
     triac_heater.timer->CCER |= (1 << TIM_Channel_1);
 
   }
@@ -70,12 +70,14 @@ static uint32_t triac_heater_convert_power(uint8_t power_in_percents)
 //--------------------------------------------------------------------------------------------------
 void MAINS_ZEROCROSS_EXTI_IRQHandler(void)
 {
-  EXTI_ClearITPendingBit(triac_heater.zerocross_exti_line);
-
-  if(GPIO_ReadInputDataBit(triac_heater.zerocross_gpio_port, triac_heater.zerocross_gpio_pin))
+  if( EXTI_GetITStatus(triac_heater.zerocross_exti_line) != RESET &&
+      GPIO_ReadInputDataBit(triac_heater.zerocross_gpio_port, triac_heater.zerocross_gpio_pin)
+  )
   {
     triac_heater.timer->CNT = 0;
   }
+
+  EXTI_ClearITPendingBit(triac_heater.zerocross_exti_line);
 }
 
 //  *** END OF FILE ***

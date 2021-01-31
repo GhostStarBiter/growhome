@@ -78,9 +78,11 @@ static void gpio_init_triac(void)
   GPIO_InitTypeDef sGPIOInit;
 
   sGPIOInit.GPIO_Pin    = TRIAC_AIR_HEATER_PIN;
-  sGPIOInit.GPIO_Mode   = GPIO_Mode_AF_PP;
+  sGPIOInit.GPIO_Mode   = GPIO_Mode_Out_PP;
   sGPIOInit.GPIO_Speed  = GPIO_Speed_50MHz;
   GPIO_Init(TRIAC_GPIO_PORT, &sGPIOInit);
+
+  GPIO_WriteBit(TRIAC_GPIO_PORT, TRIAC_AIR_HEATER_PIN, Bit_RESET);
 }
 
 
@@ -119,11 +121,6 @@ static void gpio_init_pwm(void)
 static void gpio_init_communication(void)
 {
   GPIO_InitTypeDef sGPIOInit;
-  // onewire pin
-  sGPIOInit.GPIO_Pin    = ONEWIRE_PIN;
-  sGPIOInit.GPIO_Mode   = GPIO_Mode_IN_FLOATING;
-  sGPIOInit.GPIO_Speed  = GPIO_Speed_50MHz;
-  GPIO_Init(ONEWIRE_PORT, &sGPIOInit);
 
   // i2c bus
   sGPIOInit.GPIO_Pin    = I2C1_SDA_PIN;
@@ -162,20 +159,12 @@ static void gpio_init_EXTI(void)
   EXTI_InitTypeDef EXTI_InitStructure;
   GPIO_InitTypeDef sGPIOInit;
 
-  // Mains power zero-cross detection
-  sGPIOInit.GPIO_Pin    = MAINS_ZEROCROSS_DETECT_PIN;
+  // ONEWIRE
+  sGPIOInit.GPIO_Pin    = ONEWIRE_PIN;
   sGPIOInit.GPIO_Mode   = GPIO_Mode_IN_FLOATING;
   sGPIOInit.GPIO_Speed  = GPIO_Speed_50MHz;
-  GPIO_Init(MAINS_ZEROCROSS_DETECT_PORT, &sGPIOInit);
+  GPIO_Init(ONEWIRE_PORT, &sGPIOInit);
 
-  GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, MAINS_ZEROCROSS_DETECT_PINSOURCE);
-  EXTI_InitStructure.EXTI_Line    = MAINS_ZEROCROSS_DETECT_EXTI_LINE;
-  EXTI_InitStructure.EXTI_Mode    = EXTI_Mode_Interrupt;
-  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-  EXTI_Init(&EXTI_InitStructure);
-
-  // ONEWIRE
   GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, ONEWIRE_PIN_SOURCE);
   EXTI_InitStructure.EXTI_Line    = ONEWIRE_EXTI_LINE;
   EXTI_InitStructure.EXTI_Mode    = EXTI_Mode_Interrupt;
@@ -259,9 +248,9 @@ uint16_t mcu_gpio_get_onewire_pin(void)
 
 
 //--------------------------------------------------------------------------------------------------
-void mcu_gpio_set_debug_pin(uint8_t ub_status)
+void mcu_gpio_set_debug_pin(FunctionalState dbg_pin_status)
 {
-  if(ub_status)
+  if(dbg_pin_status)
   {
     GPIO_SetBits(DEBUG_PORT, DEBUG_PIN);
   }
@@ -292,14 +281,15 @@ void mcu_gpio_toggle_debug_pin(void)
 //--------------------------------------------------------------------------------------------------
 FlagStatus mcu_gpio_get_button_status(void)
 {
-  return (FlagStatus) (GPIO_ReadInputDataBit(SYSTEM_BUTTON_PORT, SYSTEM_BUTTON_PIN));
+  // ACTIVE LOW
+  return (FlagStatus) !(GPIO_ReadInputDataBit(SYSTEM_BUTTON_PORT, SYSTEM_BUTTON_PIN));
 }
 
 
 //--------------------------------------------------------------------------------------------------
-void mcu_gpio_set_led_status(uint8_t ub_status)
+void mcu_gpio_set_led_status(FunctionalState led_status)
 {
-  if(ub_status)
+  if(led_status)
   {
     GPIO_SetBits(SYSTEM_STATUS_LED_PORT, SYSTEM_STATUS_LED_PIN);
   }
@@ -311,9 +301,9 @@ void mcu_gpio_set_led_status(uint8_t ub_status)
 
 
 //--------------------------------------------------------------------------------------------------
-void mcu_gpio_set_light(FunctionalState e_light_state)
+void mcu_gpio_set_light(FunctionalState light_state)
 {
-  if(e_light_state)
+  if(light_state)
   {
     GPIO_SetBits(LIGHT_CTRL_PORT, LIGHT_CTRL_PIN);
   }
@@ -324,9 +314,10 @@ void mcu_gpio_set_light(FunctionalState e_light_state)
 }
 
 
-void mcu_gpio_set_air_mixing_status(FunctionalState e_air_mixing_status)
+//--------------------------------------------------------------------------------------------------
+void mcu_gpio_set_air_mixing_status(FunctionalState air_mixing_status)
 {
-  if(e_air_mixing_status)
+  if(air_mixing_status)
   {
     GPIO_SetBits(MIX_AIR_PORT, MIX_AIR_PIN);
   }
@@ -336,3 +327,16 @@ void mcu_gpio_set_air_mixing_status(FunctionalState e_air_mixing_status)
   }
 }
 
+
+//--------------------------------------------------------------------------------------------------
+void mcu_gpio_set_heater_status(FunctionalState heater_state)
+{
+  if(heater_state)
+  {
+    GPIO_WriteBit(TRIAC_GPIO_PORT, TRIAC_AIR_HEATER_PIN, Bit_SET);
+  }
+  else
+  {
+    GPIO_WriteBit(TRIAC_GPIO_PORT, TRIAC_AIR_HEATER_PIN, Bit_RESET);
+  }
+}
