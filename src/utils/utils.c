@@ -11,6 +11,8 @@ char* convert_num_to_str(uint16_t digital){
   uint8_t k = 0;
   uint8_t str_len = 0;
 
+  memset(converted_string, 0, 17);
+
   //define array size to store string
   //NOTE: value + \0 symbol
   if(9 - digital >= 0)

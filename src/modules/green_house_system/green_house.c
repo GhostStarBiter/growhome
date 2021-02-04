@@ -12,7 +12,6 @@ uint8_t u8_water_level_measurements_buffer[MEASUREMENTS_BUFFER_SIZE];
 void growbox_system_init(void)
 {
   onewire_init_t  onewire_bus_init_struct;
-  triac_init_t    triac_heater_init_struct;
   servo_init_t    servo_init_struct;
 
   // ***
@@ -35,7 +34,7 @@ void growbox_system_init(void)
 
   // Init Water level value filter's parameters
   growbox.water_level.pu8_buffer          = u8_water_level_measurements_buffer;
-  growbox.water_level.u8_window_size      = MEASUREMENTS_BUFFER_SIZE;
+  growbox.water_level.u8_window_size      = 2*MEASUREMENTS_BUFFER_SIZE;
   mean_filter_init(&growbox.water_level);
 
   // ***
@@ -70,8 +69,6 @@ void growbox_control_rtos_task(void *pvParameters)
 {
   const TickType_t  x_growbox_task_timeout_ms = GROWBOX_TASK_TIMEOUT;
   TickType_t        x_last_wake_time;
-  uint16_t          timeout = 10;
-  uint16_t          ms_counter = 0;
 
   growbox_system_init();
 
@@ -82,11 +79,11 @@ void growbox_control_rtos_task(void *pvParameters)
     // ***
     vTaskDelayUntil(&x_last_wake_time, x_growbox_task_timeout_ms);
 
-//    // ***
-//    growbox_update_measurements();
-//
-//    // ***
-//    growbox_control();
+    // ***
+    growbox_update_measurements();
+
+    // ***
+    growbox_control();
   }
 
 }
@@ -101,11 +98,11 @@ void growbox_set_temperature(uint8_t set_temperature)
 //--------------------------------------------------------------------------------------------------
 static void growbox_control(void)
 {
-  if(GROW_MODE_AUTOMATIC == growbox.mode)
-  {
-    schedule_update(  &growbox.light_status,
-                      &growbox.water_pump_status);
-  }
+//  if(GROW_MODE_AUTOMATIC == growbox.mode)
+//  {
+//    schedule_update(  &growbox.light_status,
+//                      &growbox.water_pump_status);
+//  }
 
   // ***
   growbox_control_temperature();
@@ -175,7 +172,8 @@ static void growbox_control_water_supply(void)
 {
   if(GROW_MODE_AUTOMATIC == growbox.mode)
   {
-    water_pump_set_status(growbox.water_pump_status);
+    water_set_pump_power(80);   // @todo: define static pump power or create variable in growbox struct to change pump power in run-time
+    // growbox.water_pump_status
   }
 }
 
@@ -215,10 +213,12 @@ void growbox_set_light(FunctionalState light_state)
   if(ENABLE == light_state)
   {
     mcu_gpio_set_light(ENABLE);
+    growbox.light_status = ENABLE;
   }
   else
   {
     mcu_gpio_set_light(DISABLE);
+    growbox.light_status = DISABLE;
   }
 }
 

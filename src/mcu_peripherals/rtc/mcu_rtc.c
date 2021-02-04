@@ -1,7 +1,7 @@
 #include "mcu_rtc_priv.h"
 
 
-mcu_rtc_t mcu_time;
+volatile mcu_rtc_t mcu_time;
 
 //--------------------------------------------------------------------------------------------------
 void mcu_rtc_init(void)
@@ -56,6 +56,20 @@ mcu_time_t mcu_rtc_get_time(void)
   current_time.sec = (mcu_time.counter % 3600) % 60;
 
   return current_time;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+uint8_t mcu_rtc_get_hour(void)
+{
+  return mcu_time.current.hour;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+uint8_t mcu_rtc_get_minutes(void)
+{
+  return mcu_time.current.min;
 }
 
 

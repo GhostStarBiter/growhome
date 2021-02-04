@@ -114,7 +114,6 @@ static void system_user_interface_set_active_display(display_screen_t* p_set_scr
     sui.display_buffer[i] = ' ';
   }
 
-
   // prepare new display buffer
   for(i = 0; i < sui.active_display->items_cnt; i++)
   {
@@ -131,10 +130,6 @@ static void system_user_interface_set_active_display(display_screen_t* p_set_scr
     }
     else
     {
-//      if(x_pos < 1)
-//      {
-//        x_pos = 1;
-//      }
       x_pos += 16;
     }
 
@@ -257,6 +252,7 @@ static void system_user_update_display(void)
 
     item_id = display->item[index].id;
 
+    // call update item's data function
     if(display->item[index].update_data != NULL)
     {
       display->item[index].data = display->item[index].update_data(item_id);
@@ -276,18 +272,38 @@ static void system_user_update_display(void)
     }
 
     // ***
+    // CONVERT NUMBERS TO CHARACTERS
     if(display->item[index].type == DISPLAY_ITEM_NUMERIC)
     {
-      // length of textual specifier of item (TMP, WTR etc.)
-      item_text_len = strlen(display->item[index].p_text);
+      if(display->item[index].p_text != NULL)
+      {
+        // length of textual specifier of item (TMP, WTR etc.)
+        item_text_len = strlen(display->item[index].p_text);
+      }
+      else
+      {
+        item_text_len = 0;
+      }
 
       // string with item data(numeric) converted to text
       string_item_data = convert_num_to_str(display->item[index].data);
 
+      buff_pos = 0;
       buff_pos = display->item[index].text_position.x + item_text_len;
       // correct buffer insert position according to item's position row
       (display->item[index].text_position.y > 0) ? (buff_pos += 16) : (buff_pos);
 
+      // zeroing place for new data
+      sui.display_buffer[buff_pos] = '0';
+      sui.display_buffer[buff_pos+1] = '0';
+
+      // shift character 1 position right if it is less than 0
+      if(display->item[index].data < 10)
+      {
+        buff_pos += 1;
+      }
+
+      m = 0;
       while(string_item_data[m])
       {
         sui.display_buffer[buff_pos + m] = string_item_data[m];
@@ -338,26 +354,16 @@ void sui_item_action(int16_t encoder_ticks)
     break;
 
     case LIGHT_STATUS:
-      // Encoder ticks changed in interrupt routine
-      // so while user didn't push the button
-      // the value of encoder ticks can be changed
-      while(!encoder_button_activated())
+      // change light status
+      if(growbox_get_light_status())
       {
-        vTaskDelay(1);
+        growbox_set_light(DISABLE);
       }
-
-      if(encoder_get_ticks()%2)
+      else
       {
-        // change light status
-        if(growbox_get_light_status())
-        {
-          growbox_set_light(DISABLE);
-        }
-        else
-        {
-          growbox_set_light(ENABLE);
-        }
+        growbox_set_light(ENABLE);
       }
+      encoder_deactivate_button();
     break;
 
     case LIGHT_T_ON_TIME:
@@ -435,18 +441,16 @@ void sui_item_action(int16_t encoder_ticks)
 static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
 {
   uint16_t    updated_data = 0;
-  mcu_time_t  time;
+  uint8_t     tmp = 0;
 
   switch(item_id)
   {
     case CURRENT_TIME_HOURS:
-      time = mcu_rtc_get_time();
-      updated_data = time.hour;
+      updated_data = mcu_rtc_get_hour();
     break;
 
     case CURRENT_TIME_MINS:
-      time = mcu_rtc_get_time();
-      updated_data = time.min;
+      updated_data = mcu_rtc_get_minutes();
     break;
 
     case LIGHT_STATUS:
@@ -491,11 +495,11 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
     break;
 
     case WATER_T_ON_TIME:
-
+      // growbox_get_water_t_on_time()
     break;
 
     case WATER_T_OFF_TIME:
-
+      // growbox_get_water_t_off_time()
     break;
 
     case ONLINE_LINK_STATUS:
@@ -547,7 +551,7 @@ static void sui_main_screen_init(void)
 
   main_screen_light.id                      = LIGHT_STATUS;
   main_screen_light.type                    = DISPLAY_ITEM_TEXTUAL;
-  main_screen_light.p_text                  = " ";
+  main_screen_light.p_text                  = NULL;
   main_screen_light.text_position.x         = 7;
   main_screen_light.text_position.y         = LCD216_FIRST_ROW;
   main_screen_light.update_data             = sui_update_screen_item_data;
@@ -565,7 +569,7 @@ static void sui_main_screen_init(void)
 
   time_hours.id                             = CURRENT_TIME_HOURS;
   time_hours.type                           = DISPLAY_ITEM_NUMERIC;       // @todo: change to DISPLAY_ITEM_NUMERIC!!!!!
-  time_hours.p_text                         = " ";                      // @todo: leave empty place holder. Set numeric value in update function
+  time_hours.p_text                         = NULL;                      // @todo: leave empty place holder. Set numeric value in update function
   time_hours.text_position.x                = 7;
   time_hours.text_position.y                = LCD216_SECOND_ROW;
   time_hours.update_data                    = sui_update_screen_item_data;
@@ -574,7 +578,7 @@ static void sui_main_screen_init(void)
 
   time_mins.id                              = CURRENT_TIME_MINS;
   time_mins.type                            = DISPLAY_ITEM_NUMERIC;       // @todo: change to DISPLAY_ITEM_NUMERIC!!!!!
-  time_mins.p_text                          = " ";                       // @todo: leave empty place holder. Set numeric value in update function
+  time_mins.p_text                          = NULL;                       // @todo: leave empty place holder. Set numeric value in update function
   time_mins.text_position.x                 = 10;
   time_mins.text_position.y                 = LCD216_SECOND_ROW;
   time_mins.update_data                     = sui_update_screen_item_data;
