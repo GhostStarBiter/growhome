@@ -198,13 +198,12 @@ static void system_user_interface_update(void)
 
   if(encoder_button_activated())
   {
-    growbox_set_control_mode(GROW_MODE_MANUAL);
+    growbox_set_control_mode(CONTROL_MODE_MANUAL);
     index = sui.active_item_index;
     sui.active_display->item[index].action(current_ticks);
   }
   else
   {
-    growbox_set_control_mode(GROW_MODE_AUTOMATIC);
     // menu navigation
     if(current_ticks != 0)
     {

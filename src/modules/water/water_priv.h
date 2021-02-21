@@ -13,7 +13,6 @@
 
 typedef struct {
     uint8_t         level;
-    FunctionalState pump_status;
     uint8_t         pump_power;
 } water_t;
 

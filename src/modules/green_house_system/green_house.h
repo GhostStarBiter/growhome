@@ -2,8 +2,9 @@
 #define GROW_GREEN_H
 
 typedef enum {
-  GROW_MODE_MANUAL    = 0,
-  GROW_MODE_AUTOMATIC = 1
+  CONTROL_MODE_MANUAL    = 0,
+  CONTROL_MODE_AUTOMATIC = 1,
+  CONTROL_MODE_REMOTE    = 2
 } control_mode_t;
 
 

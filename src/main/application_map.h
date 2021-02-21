@@ -9,7 +9,7 @@
 
 //  If set to 1
 //  don't remap SWD pins for LCD216 usage
-#define APPLICATION_DEBUG                   0
+#define APPLICATION_DEBUG                   1
 
 
 //  APPLICATION
@@ -24,20 +24,30 @@
 
 // ***
 // Task priorities
-#define USER_INTERFACE_TASK_PRIORITY        2
 #define SERVICE_TASK_PRIORITY               1
-#define GROWBOX_TASK_PRIORITY               3
+#define USER_INTERFACE_TASK_PRIORITY        2
+#define NETWORK_COMM_TASK_PRIORITY          3
+#define GROWBOX_TASK_PRIORITY               4
 
 // ***
 // Task call intervals
-#define INTERFACE_TASK_TIMEOUT              10  // [ticks] == ms
-#define SERVICE_TASK_TIMEOUT                1000   // [ticks] == ms
-#define GROWBOX_TASK_TIMEOUT                1   // [tick] == ms
+#define INTERFACE_TASK_TIMEOUT              10      // [ticks] == ms
+#define SERVICE_TASK_TIMEOUT                1000    // [ticks] == ms
+#define GROWBOX_TASK_TIMEOUT                1       // [tick] == ms
+
+
+#define GROWBOX_MANUAL_MODE_TIMEOUT         60*1000 // 60 seconds (with respect to GROWBOX TASK CYCLE)
+#define AIR_HEATER_CYCLE_TIME               5000    // 5 seconds
+#define AIR_HEATER_MIN_DUTY                 2000
+
+#define GROWBOX_DEFAULT_TEMPERATURE         28
+#define AIR_REGULATION_TOLERANCE_DEGREES    1
 
 
 // ***
 // ADC measurement
 #define MEASUREMENTS_BUFFER_SIZE            8
+#define WATER_TANK_LEVEL_MEAS_BUFF_SIZE     16
 
 #define APPLICATION_USE_LM60_TEMP           1
 #define APPLICATION_USE_AM2301_TEMP         (!(APPLICATION_USE_LM60_TEMP))
@@ -85,7 +95,7 @@
 #define TEMP_2_CONVERSION_ORDER             2
 #define CHANNEL_TEMP_2                      (TEMP_2_CONVERSION_ORDER - 1)
 
-#define AIR_REGULATION_TOLERANCE_DEGREES    2
+
 
 // Water tank 1 level measurement pin
 #define WATER_TANK_LEVEL_MEASURE_PIN        GPIO_Pin_4
@@ -171,14 +181,6 @@ typedef enum {
 #define ONEWIRE_EXTI_IRQn                   EXTI2_IRQn
 #define ONEWIRE_EXTI_IRQHandler             EXTI2_IRQHandler
 
-// Mains Voltage zero-cross
-#define MAINS_ZEROCROSS_DETECT_PORT         GPIOB
-#define MAINS_ZEROCROSS_DETECT_PIN          GPIO_Pin_3
-#define MAINS_ZEROCROSS_DETECT_PINSOURCE    GPIO_PinSource3
-#define MAINS_ZEROCROSS_DETECT_EXTI_LINE    EXTI_Line3
-#define MAINS_ZEROCROSS_EXTI_CHANNEL        EXTI3_IRQn
-#define MAINS_ZEROCROSS_EXTI_IRQHandler     EXTI3_IRQHandler
-
 // LCD216 RS - Register select pin
 #define LCD216_RS_PORT                      GPIOB
 #define LCD216_RS_PIN                       GPIO_Pin_4
@@ -209,10 +211,12 @@ typedef enum {
 #define ESP_UART_TX_PIN                     GPIO_Pin_10
 #define ESP_UART_RX_PIN                     GPIO_Pin_11
 
+#define ESP_UART_IRQn                       USART3_IRQn
+#define ESP_UART_DMA_IRQn                   DMA1_Channel2_IRQn
 #define ESP_INTERFACE_IRQ_HANDLER           USART3_IRQHandler
 #define ESP_UART_INTERFACE                  USART3
-#define ESP_UART_DMA_TX_CHANNEL             DMA1_Channel3
-#define ESP_UART_DMA_TX_COMPLETE            DMA1_FLAG_TC3
+#define ESP_UART_DMA_TX_CHANNEL             DMA1_Channel2
+#define ESP_UART_DMA_TX_COMPLETE            DMA1_FLAG_TC2
 #define ESP8266_UART_BAUDRATE               115200
 
 // Debug pin

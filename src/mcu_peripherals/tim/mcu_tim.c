@@ -8,7 +8,7 @@ void mcu_tim_init(void)
 
   init_pwm_timer();
 
-  //init_onewire_timer();
+  init_onewire_timer();
 
 }
 
@@ -39,13 +39,6 @@ static void init_servo_timer(void)
 
   TIM_CtrlPWMOutputs(SERVO_TIMER, ENABLE);
   TIM_Cmd(SERVO_TIMER, ENABLE);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-TIM_TypeDef* mcu_timer_servo(void)
-{
-  return SERVO_TIMER;
 }
 
 
@@ -138,13 +131,6 @@ void mcu_pwm_timer_set_channel_pulse_width(PWM_Channel_t pwm_channel, uint8_t pu
 
 
 //--------------------------------------------------------------------------------------------------
-TIM_TypeDef* mcu_pwm_timer(void)
-{
-  return PWM_CONTROL_TIMER;
-}
-
-
-//--------------------------------------------------------------------------------------------------
 static void init_onewire_timer(void)
 {
   TIM_TimeBaseInitTypeDef sTimBaseOnewire;
@@ -157,13 +143,6 @@ static void init_onewire_timer(void)
   TIM_TimeBaseInit(TIM2, &sTimBaseOnewire);
 
   TIM_ARRPreloadConfig(ONEWIRE_TIMER, ENABLE);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-TIM_TypeDef* mcu_timer_onewire(void)
-{
-  return ONEWIRE_TIMER;
 }
 
 

@@ -1,5 +1,6 @@
 #include "mcu_uart_priv.h"
 
+uint32_t  dummy;
 
 //--------------------------------------------------------------------------------------------------
 void mcu_uart_init(void)
@@ -23,14 +24,16 @@ void mcu_uart_init(void)
 
   sDMA_Tx_Init.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;
   sDMA_Tx_Init.DMA_MemoryInc          = DMA_MemoryInc_Enable;
+  sDMA_Tx_Init.DMA_MemoryBaseAddr     = (uint32_t) &dummy;
 
-  sDMA_Tx_Init.DMA_PeripheralBaseAddr = (uint32_t) &ESP_UART_INTERFACE->DR;
+  sDMA_Tx_Init.DMA_PeripheralBaseAddr = (uint32_t) &(ESP_UART_INTERFACE->DR);
   sDMA_Tx_Init.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
   sDMA_Tx_Init.DMA_PeripheralInc      = DMA_PeripheralInc_Disable;
 
   sDMA_Tx_Init.DMA_M2M                = DMA_M2M_Disable;
   sDMA_Tx_Init.DMA_Mode               = DMA_Mode_Normal;
   sDMA_Tx_Init.DMA_Priority           = DMA_Priority_High;
+  sDMA_Tx_Init.DMA_BufferSize         = 1;
 
   DMA_Init(ESP_UART_DMA_TX_CHANNEL, &sDMA_Tx_Init);
 
@@ -38,7 +41,10 @@ void mcu_uart_init(void)
 
   USART_ITConfig(ESP_UART_INTERFACE, USART_IT_IDLE, ENABLE);
   USART_ITConfig(ESP_UART_INTERFACE, USART_IT_RXNE, ENABLE);
+
   USART_Cmd(ESP_UART_INTERFACE, ENABLE);
+
+  DMA_Cmd(ESP_UART_DMA_TX_CHANNEL, ENABLE);
 }
 
 
@@ -47,6 +53,7 @@ void  mcu_uart_dma_start_transmit(uint16_t transmission_size)
 {
   while(!mcu_uart_is_transmission_complete())
   {
+    vTaskDelay(1);
     // wait till current transmission is incomplete
   }
   DMA_Cmd(ESP_UART_DMA_TX_CHANNEL, DISABLE);

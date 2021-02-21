@@ -2,8 +2,8 @@
 #define FILTER_H
 
 typedef struct {
-    uint8_t*    pu8_buffer;
-    uint8_t     u8_insert_index;
+    uint8_t*    measurement_buffer;
+    uint8_t     insert_index;
     uint8_t     u8_window_size;
     uint16_t    filtered;
 } filter_object_t;

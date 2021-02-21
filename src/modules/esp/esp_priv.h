@@ -7,7 +7,9 @@
 #include "main/application_map.h"
 
 #include "stm32f10x_usart.h"
-#include "mcu_peripherals/uart/mcu_uart.h"
+
+#include "gpio/mcu_gpio.h"
+#include "uart/mcu_uart.h"
 #include "utils/utils.h"
 
 #include "string.h"
@@ -40,7 +42,8 @@
 
 typedef struct{
     USART_TypeDef *           pUART;
-    esp_module_status         status;
+    FunctionalState           chip_status;
+    esp_sw_status             sw_status;
     wifi_mode_t               wifi_mode;
     uint8_t                   receive_finished;
     uint8_t                   send_buf[ESP_RECV_BUF_SIZE];
@@ -60,7 +63,7 @@ static void esp_next_event(wifi_mode_t e_status);
 
 
 //--------------------------------------------------------------------------------------------------
-static void esp_set_status(esp_module_status e_new_status);
+static void esp_set_status(esp_sw_status e_new_sw_status);
 
 
 //--------------------------------------------------------------------------------------------------

@@ -3,6 +3,8 @@
 
 #include "misc.h"
 
+#include "application_map.h"
+
 #include "mcu_it_ctrl.h"
 
 #define IRQ_GPOUR_IMPORTANT                           0

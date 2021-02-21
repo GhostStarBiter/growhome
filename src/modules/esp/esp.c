@@ -9,7 +9,15 @@ result_t esp_init(void (*callback_process_incoming_data)(uint8_t*))
   esp.send_buf[0] = 'A';
   esp.send_buf[1] = 'T';
 
+  mcu_gpio_set_esp_reset_status(DISABLE);
+
+  esp.chip_status = ENABLE;
+  mcu_gpio_set_esp_enable_status(esp.chip_status);
+
   mcu_uart_set_dma_buffer_address((uint32_t) &esp.send_buf[0]);
+
+  // wait for ESP startup after EN signal presence
+  vTaskDelay(500);
 
   operation_result = esp_send_command(AT_STARTUP_TEST, esp_simple_response);
 
@@ -55,14 +63,20 @@ void esp_update(void)
     case WIFI_PROCESS_RESPONSE:
       if(esp.response_type == esp_simple_response)
       {
-        response_ok = !strncmp((char*) esp.recv_buf, AT_RESPONSE_OK, sizeof(AT_RESPONSE_OK));
+        // @TODO:
+        //              Example
+        //      AT      ->        AT\r\r\n\r\n OK\r\n
+        //    Write parser
+        // response_ok = !strncmp((char*) esp.recv_buf, AT_RESPONSE_OK, sizeof(AT_RESPONSE_OK));
+
+
         if(response_ok)
         {
-          esp.status = ESP_READY;
+          esp.sw_status = ESP_READY;
         }
         else
         {
-          esp.status = ESP_ERROR;
+          esp.sw_status = ESP_ERROR;
         }
         esp.uw_recv_size = 0;
         memset(esp.recv_buf, 0, ESP_RECV_BUF_SIZE);
@@ -73,11 +87,11 @@ void esp_update(void)
       {
         if(result_success == esp_process_incoming_data())
         {
-          esp.status = ESP_READY;
+          esp.sw_status = ESP_READY;
         }
         else
         {
-          esp.status = ESP_ERROR;
+          esp.sw_status = ESP_ERROR;
         }
       }
 
@@ -117,13 +131,16 @@ result_t esp_send_command(char* command_string, esp_response_type_t e_expected_r
     esp.response_type = e_expected_response;
 
     ptr_send_buffer = (char*) &esp.send_buf[AT_COMMAND_START_INDEX];
-    strcpy(ptr_send_buffer, command_string);
+    if(command_string)
+    {
+      strcpy(ptr_send_buffer, command_string);
+    }
 
-    request_size = sizeof("AT") + sizeof(command_string);
+    request_size = strlen("AT") + strlen(command_string);
     ptr_send_buffer = (char*) &esp.send_buf[request_size];
     strcpy(ptr_send_buffer, AT_REQEST_ENDING);
 
-    esp.uw_send_size = request_size + sizeof(AT_REQEST_ENDING);
+    esp.uw_send_size = request_size + strlen(AT_REQEST_ENDING);
     esp.receive_finished = 0;
 
     esp_set_status(ESP_BUSY);
@@ -163,9 +180,9 @@ static void esp_next_event(wifi_mode_t e_event)
 
 
 //--------------------------------------------------------------------------------------------------
-static void esp_set_status(esp_module_status e_new_status)
+static void esp_set_status(esp_sw_status e_new_status)
 {
-  esp.status = e_new_status;
+  esp.sw_status = e_new_status;
 }
 
 
@@ -177,7 +194,7 @@ result_t esp_receive_data(uint8_t byte)
   if(ESP_RECV_BUFFER_NOT_FULL)
   {
     if( ESP_RECV_BUFFER_EMPTY &&
-        esp.status == ESP_READY &&
+        esp.sw_status == ESP_READY &&
         esp.wifi_mode == WIFI_IDLE)
     {
       esp_set_status(ESP_BUSY);

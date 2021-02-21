@@ -1,6 +1,7 @@
 #ifndef PROJECT_MAIN_H
 #define PROJECT_MAIN_H
 
+#include <string.h>
 
 // ***
 #include "stm32f10x.h"
@@ -20,6 +21,9 @@
 
 // ***
 #include "green_house_system/green_house.h"
+
+// ***
+#include "network/network.h"
 
 
 #endif // PROJECT_MAIN_H

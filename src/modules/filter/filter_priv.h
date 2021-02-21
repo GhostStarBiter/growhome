@@ -1,6 +1,8 @@
 #ifndef FILTER_PRIV_H
 #define FILTER_PRIV_H
 
+#include <string.h>
+
 #include "filter.h"
 
 //--------------------------------------------------------------------------------------------------

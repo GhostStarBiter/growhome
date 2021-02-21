@@ -26,19 +26,50 @@
 // this module
 #include "green_house.h"
 
+typedef enum {
+  NONE,
+  HEAT,
+  COOLDOWN,
+  IN_RANGE
+} temp_control_state_t;
+
+typedef struct {
+  FunctionalState status;                  // ON/OF
+  uint16_t        duty_ms;
+  uint16_t        cycle_counter_ms;
+} heater_t;
+
+typedef struct {
+  uint16_t  p_coeff;
+  uint16_t  p_counter;
+  uint16_t  i_coeff;
+  uint16_t  i_counter;
+  uint16_t  delta;
+  int32_t   sum;
+  int16_t   output;
+} regulator_t;
+
+
+typedef struct {
+  temp_control_state_t  state;
+  uint8_t               desired;
+  int8_t                delta;                     // [-127 .. 127]
+} temperature_t;
+
 
 typedef struct{
-    control_mode_t    mode;                           // MANUAL/AUTOMATIC
-    FunctionalState   light_status;                   // ON/OFF
+    volatile control_mode_t    mode;                  // MANUAL/AUTOMATIC
+    volatile FunctionalState   light_status;          // ON/OFF
+    volatile FunctionalState   water_pump_status;     // ON/OFF
+    uint16_t          manual_mode_timeout;
     FunctionalState   air_income_status;              // ON/OFF
     FunctionalState   air_outlet_valve_status;        // OPEN/CLOSED
-    FunctionalState   water_pump_status;              // ON/OFF
-    FunctionalState   air_mix_status;                 // ON/OFF
-    FunctionalState   heater_status;                  // ON/OFF
 
-    uint8_t           air_heater_power;               // 0 .. 100 %
-    uint8_t           desired_air_temp;
-    int8_t            delta_temp;                     // [-127 .. 127]
+    FunctionalState   air_mix_status;                 // ON/OFF
+
+    heater_t          heater;
+    temperature_t     temperature;
+
     uint8_t           desired_humidity;
     int8_t            delta_humidity;                 // [-127 .. 127]
 
@@ -96,6 +127,16 @@ static void growbox_set_income_air_intensity
 static void growbox_set_air_mixing_status
 (
     FunctionalState e_air_mixing_status
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Set status of Air Heater
+/// @param  Air Heater status (ENABLE/DISABLE)
+//--------------------------------------------------------------------------------------------------
+static void growbox_set_heater_status
+(
+    FunctionalState heater_state
 );
 
 

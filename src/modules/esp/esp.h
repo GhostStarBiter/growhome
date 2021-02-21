@@ -13,10 +13,11 @@ typedef enum
 
 
 typedef enum {
+  ESP_IDLE,
   ESP_READY,
   ESP_BUSY,
   ESP_ERROR
-} esp_module_status;
+} esp_sw_status;
 
 
 typedef enum {

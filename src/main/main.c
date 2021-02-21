@@ -1,7 +1,6 @@
 #include "main.h"
 
 
-
 //--------------------------------------------------------------------------------------------------
 void heartbeat_blink_led(void)
 {
@@ -37,7 +36,7 @@ void service_task(void *pvParameters)
 
     // ***
     heartbeat_blink_led();
-   };
+  };
 }
 
 
@@ -63,12 +62,20 @@ int main(void)
                 (UBaseType_t) GROWBOX_TASK_PRIORITY,
                 ( xTaskHandle * ) NULL);
 
-//  // ****
+  // ****
   xTaskCreate(  system_user_interface_task,
                 (const char *) "user_interface_task",
                 configMINIMAL_STACK_SIZE,
                 NULL,
                 (UBaseType_t) USER_INTERFACE_TASK_PRIORITY,
+                ( xTaskHandle * ) NULL);
+
+  // ****
+  xTaskCreate(  network_communication_task,
+                (const char *) "network_task",
+                1024,
+                NULL,
+                (UBaseType_t) NETWORK_COMM_TASK_PRIORITY,
                 ( xTaskHandle * ) NULL);
 
   // ****

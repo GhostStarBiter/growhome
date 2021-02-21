@@ -8,9 +8,9 @@ void schedule_init(void)
   schedule.current_day        = SUNDAY;
 
   schedule.current_time.hour  = 6;
-  schedule.current_time.min   = 55;
+  schedule.current_time.min   = 59;
 
-  //mcu_rtc_set_time(schedule.current_time);
+  mcu_rtc_set_time(schedule.current_time);
 
   schedule_init_week();
 
@@ -29,7 +29,7 @@ static void schedule_init_week(void)
     schedule.day[weekday].water.on_time.hour     = 7;
     schedule.day[weekday].water.on_time.min      = 0;
 
-    schedule.day[weekday].water.duration_sec     = 30;
+    schedule.day[weekday].water.duration_sec     = 10;
     schedule.day[weekday].water.interval_minutes = 4;
   }
 }

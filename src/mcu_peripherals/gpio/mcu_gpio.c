@@ -340,3 +340,31 @@ void mcu_gpio_set_heater_status(FunctionalState heater_state)
     GPIO_WriteBit(TRIAC_GPIO_PORT, TRIAC_AIR_HEATER_PIN, Bit_RESET);
   }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+void mcu_gpio_set_esp_enable_status(FunctionalState esp_enable_state)
+{
+  if(esp_enable_state)
+  {
+    GPIO_WriteBit(ESP_EN_PORT, ESP_EN_PIN, Bit_SET);
+  }
+  else
+  {
+    GPIO_WriteBit(ESP_EN_PORT, ESP_EN_PIN, Bit_RESET);
+  }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+void mcu_gpio_set_esp_reset_status(FunctionalState esp_reset_state)
+{
+  if(esp_reset_state)
+  {
+    GPIO_WriteBit(ESP_RST_PORT, ESP_RST_PIN, Bit_RESET);
+  }
+  else
+  {
+    GPIO_WriteBit(ESP_RST_PORT, ESP_RST_PIN, Bit_SET);
+  }
+}
