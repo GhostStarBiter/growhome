@@ -71,12 +71,12 @@ int main(void)
                 ( xTaskHandle * ) NULL);
 
   // ****
-  xTaskCreate(  network_communication_task,
-                (const char *) "network_task",
-                1024,
-                NULL,
-                (UBaseType_t) NETWORK_COMM_TASK_PRIORITY,
-                ( xTaskHandle * ) NULL);
+//  xTaskCreate(  network_communication_task,
+//                (const char *) "network_task",
+//                1024,
+//                NULL,
+//                (UBaseType_t) NETWORK_COMM_TASK_PRIORITY,
+//                ( xTaskHandle * ) NULL);
 
   // ****
   vTaskStartScheduler();
