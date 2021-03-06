@@ -140,7 +140,7 @@ static void init_onewire_timer(void)
   sTimBaseOnewire.TIM_Period              = 4;
   sTimBaseOnewire.TIM_Prescaler           = 71;
   sTimBaseOnewire.TIM_RepetitionCounter   = 0;
-  TIM_TimeBaseInit(TIM2, &sTimBaseOnewire);
+  TIM_TimeBaseInit(ONEWIRE_TIMER, &sTimBaseOnewire);
 
   TIM_ARRPreloadConfig(ONEWIRE_TIMER, ENABLE);
 }
