@@ -64,6 +64,7 @@ typedef struct {
 typedef struct {
     ctrl_item_id_t        id;
     item_type_t           type;
+    bool                  activated;                        // true/false - is item value is to be set
     char*                 p_text;                           // char or text representative of display item
     on_screen_position_t  text_position;                    // coordinates of item (char or string) on display
     uint16_t              data;                             // item data (optional) to display/set
@@ -87,9 +88,9 @@ typedef struct {
 
 
 // structure controlled by encoder input which is interrupt-processed
-typedef volatile struct {
+typedef struct {
     // *** INTERNAL VARIABLES
-    char              display_buffer[SUI_DISPLAY_BUFFER_SIZE + 1];
+    volatile char     display_buffer[SUI_DISPLAY_BUFFER_SIZE + 1];
     uint8_t           active_item_index;
 
     // *** OBJECTS
