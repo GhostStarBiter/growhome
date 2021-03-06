@@ -1,6 +1,6 @@
 #include "encoder_input_priv.h"
 
-encoder_input_t encoder;
+volatile encoder_input_t encoder;
 
 //--------------------------------------------------------------------------------------------------
 void encoder_init(void)

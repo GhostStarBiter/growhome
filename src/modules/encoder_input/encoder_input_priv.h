@@ -10,7 +10,7 @@
 #define ENCODER_A_HIGH                      GPIO_ReadInputDataBit(ENCODER_A_PORT, ENCODER_A_PIN)
 #define ENCODER_B_HIGH                      GPIO_ReadInputDataBit(ENCODER_B_PORT, ENCODER_B_PIN)
 
-typedef volatile struct{
+typedef struct{
   bool      button_activated;
   int16_t   ticks;
 } encoder_input_t;
