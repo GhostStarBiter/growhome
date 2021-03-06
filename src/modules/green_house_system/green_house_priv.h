@@ -58,9 +58,9 @@ typedef struct {
 
 
 typedef struct{
-    volatile control_mode_t    mode;                  // MANUAL/AUTOMATIC
-    volatile FunctionalState   light_status;          // ON/OFF
-    volatile FunctionalState   water_pump_status;     // ON/OFF
+    control_mode_t    mode;                  // MANUAL/AUTOMATIC
+    FunctionalState   light_status;          // ON/OFF
+    FunctionalState   water_pump_status;     // ON/OFF
     uint16_t          manual_mode_timeout;
     FunctionalState   air_income_status;              // ON/OFF
     FunctionalState   air_outlet_valve_status;        // OPEN/CLOSED

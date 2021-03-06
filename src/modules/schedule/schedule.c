@@ -5,15 +5,16 @@ schedule_t schedule;
 //--------------------------------------------------------------------------------------------------
 void schedule_init(void)
 {
+  mcu_time_t init_time;
+
+  init_time = mcu_rtc_get_time();
+
   schedule.current_day        = SUNDAY;
 
-  schedule.current_time.hour  = 6;
-  schedule.current_time.min   = 59;
-
-  mcu_rtc_set_time(schedule.current_time);
+  schedule.current_time.hour  = init_time.hour;
+  schedule.current_time.min   = init_time.min;
 
   schedule_init_week();
-
 }
 
 
@@ -24,7 +25,7 @@ static void schedule_init_week(void)
   {
     schedule.day[weekday].light.on_time.hour     = 7;
     schedule.day[weekday].light.on_time.min      = 0;
-    schedule.day[weekday].light.duration_sec     = DAY_DEFAULT_LIGHT_DURATION;
+    schedule.day[weekday].light.duration_sec     = 60;//DAY_DEFAULT_LIGHT_DURATION;
 
     schedule.day[weekday].water.on_time.hour     = 7;
     schedule.day[weekday].water.on_time.min      = 0;

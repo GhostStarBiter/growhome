@@ -13,6 +13,7 @@ void growbox_system_init(void)
 {
   onewire_init_t  onewire_bus_init_struct;
   servo_init_t    servo_init_struct;
+  mcu_time_t      init_time;
 
   // ***
   growbox.mode                            = CONTROL_MODE_AUTOMATIC;
@@ -62,6 +63,11 @@ void growbox_system_init(void)
 
   // ***
   water_init();
+
+  // ***
+  init_time.hour = 7;
+  init_time.min = 00;
+  mcu_rtc_set_time(init_time);
 
   // ***
   schedule_init();
