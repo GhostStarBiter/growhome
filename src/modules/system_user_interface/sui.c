@@ -12,7 +12,8 @@ screen_item_t go_to_prev_screen = {
     .type                     = DISPLAY_ITEM_TEXTUAL,
     .text_position.x          = 14,
     .text_position.y          = LCD216_FIRST_ROW,
-    .action                   = sui_go_to_prev_screen
+    .action                   = sui_go_to_prev_screen,
+    .update_data              = NULL
 };
 
 screen_item_t go_to_next_screen = {
@@ -20,7 +21,8 @@ screen_item_t go_to_next_screen = {
     .type                     = DISPLAY_ITEM_TEXTUAL,
     .text_position.x          = 15,
     .text_position.y          = LCD216_FIRST_ROW,
-    .action                   = sui_go_to_next_screen
+    .action                   = sui_go_to_next_screen,
+    .update_data              = NULL
 };
 
 //------------------------------------------------------------------------------
@@ -32,7 +34,7 @@ screen_item_t main_screen_temperature,
               time_mins,
               online_status;
 
-screen_item_t main_screen_items[MAIN_SCREEN_ELEMENTS_NUMBER];
+screen_item_t* main_screen_items[MAIN_SCREEN_ELEMENTS_NUMBER];
 
 //------------------------------------------------------------------------------
 //  *** TEMPERATURE SCREEN
@@ -40,7 +42,7 @@ screen_item_t temperature,
               heater_status,
               air_outlet_status;
 
-screen_item_t temperature_screen_items[TEMPERATURE_SCREEN_ELEMENTS_NUMBER];
+screen_item_t* temperature_screen_items[TEMPERATURE_SCREEN_ELEMENTS_NUMBER];
 
 //------------------------------------------------------------------------------
 //  *** WATER SCREEN
@@ -48,7 +50,7 @@ screen_item_t water_screen_level,
               water_t_on,
               water_t_off;
 
-screen_item_t water_screen_items[WATER_SCREEN_ELEMENTS_NUMBER];
+screen_item_t* water_screen_items[WATER_SCREEN_ELEMENTS_NUMBER];
 
 //------------------------------------------------------------------------------
 //  *** LIGHT SCREEN
@@ -56,14 +58,14 @@ screen_item_t light_status,
               light_t_on,
               light_t_off;
 
-screen_item_t light_screen_items[LIGHT_SCREEN_ELEMENTS_NUMBER];
+screen_item_t* light_screen_items[LIGHT_SCREEN_ELEMENTS_NUMBER];
 
 //------------------------------------------------------------------------------
 //  *** CONNECT TO IP SCREEN
 screen_item_t online_connection_status,
               select_wi_fi_ap;
 
-screen_item_t connection_screen_items[CONNECTION_SCREEN_ELEMENTS_NUMBER];
+screen_item_t* connection_screen_items[CONNECTION_SCREEN_ELEMENTS_NUMBER];
 
 //------------------------------------------------------------------------------
 //  *** SET TIME SCREEN
@@ -71,7 +73,7 @@ screen_item_t set_time_screen_text,
               set_time_screen_hours,
               set_time_screen_minutes;
 
-screen_item_t set_time_screen_items[SET_TIME_SCREEN_ELEMENTS_NUMBER];
+screen_item_t* set_time_screen_items[SET_TIME_SCREEN_ELEMENTS_NUMBER];
 
 
 // *** User menu displays
@@ -121,8 +123,8 @@ static void system_user_interface_set_active_display(display_screen_t* p_set_scr
   // prepare new display buffer
   for(i = 0; i < sui.active_display->items_cnt; i++)
   {
-    x_pos = p_set_screen->item[i].text_position.x;
-    y_pos = p_set_screen->item[i].text_position.y;
+    x_pos = p_set_screen->item[i]->text_position.x;
+    y_pos = p_set_screen->item[i]->text_position.y;
 
     // to define display item's position in display buffer
     // by multiplying x_pos by y_pos
@@ -138,7 +140,7 @@ static void system_user_interface_set_active_display(display_screen_t* p_set_scr
     }
 
     buf_position = x_pos * y_pos;
-    strncpy((char*) &sui.display_buffer[buf_position], p_set_screen->item[i].p_text, strlen(p_set_screen->item[i].p_text));
+    strncpy((char*) &sui.display_buffer[buf_position], p_set_screen->item[i]->p_text, strlen(p_set_screen->item[i]->p_text));
   }
 
   // clean-up all null-terminator characters
@@ -173,7 +175,7 @@ void system_user_interface_task(void *pvParameters)
 
   system_user_interface_init();
 
-  system_user_interface_startup_screen();
+  //system_user_interface_startup_screen();
 
   lcd216_cursor_on();
   lcd216_blink_on();
@@ -195,41 +197,62 @@ void system_user_interface_task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 static void system_user_interface_update(void)
 {
-  uint8_t index;
-  static int8_t  prev_ticks = 0;
+  uint8_t         index;
+  static int8_t   prev_ticks    = 0;
+  int8_t          current_ticks = 0;
+  int8_t          delta_ticks = 0;
 
-  int8_t current_ticks = encoder_get_ticks();
   index = sui.active_item_index;
 
+
+  // *** Check button status
   if(encoder_button_activated())
   {
-    growbox_set_control_mode(CONTROL_MODE_MANUAL);                            // NOTE: growbox module will go back to AUTOMATIC after internal timeout (1 min)
-    sui.active_display->item[index].activated = true;
-    sui.active_display->item[index].action(current_ticks);
-  }
-  else
-  {
-    sui.active_display->item[index].activated = false;
-    if(current_ticks != 0)
+    if(sui.active_display->item[index]->activated)
     {
-      if(prev_ticks != current_ticks)
-      {
-        sui.active_item_index += (prev_ticks - current_ticks);
-      }
-
-      while(sui.active_item_index > sui.active_display->items_cnt)
-      {
-        sui.active_item_index %= (sui.active_display->items_cnt);
-      }
-
-      index = sui.active_item_index;
-      lcd216_cursor_set(  sui.active_display->item[index].text_position.x,
-                          sui.active_display->item[index].text_position.y);
-      prev_ticks = current_ticks;
+      //growbox_set_control_mode(CONTROL_MODE_AUTOMATIC);
+      sui.active_display->item[index]->activated = false;
+    }
+    else
+    {
+      growbox_set_control_mode(CONTROL_MODE_MANUAL);
+      sui.active_display->item[index]->activated = true;
+      sui.active_display->item[index]->action(delta_ticks);
     }
   }
 
   system_user_update_display();
+
+  // *** Check Encoder rotation
+  current_ticks = encoder_get_ticks();
+
+  if(current_ticks != 0)
+  {
+    if(prev_ticks != current_ticks)
+    {
+      delta_ticks = prev_ticks - current_ticks;
+    }
+
+    if(!sui.active_display->item[index]->activated)
+    {
+
+      sui.active_item_index += delta_ticks;
+
+      if(sui.active_item_index >= sui.active_display->items_cnt)
+      {
+        sui.active_item_index = 0;//(sui.active_display->items_cnt);
+      }
+
+      // Update index of currently active item
+      index = sui.active_item_index;
+      lcd216_cursor_set(  sui.active_display->item[index]->text_position.x,
+                          sui.active_display->item[index]->text_position.y);
+      vTaskDelay(250);
+    }
+  }
+
+
+  prev_ticks = current_ticks;
 }
 
 
@@ -237,47 +260,53 @@ static void system_user_interface_update(void)
 static void system_user_update_display(void)
 {
   ctrl_item_id_t    item_id;
-  display_screen_t* display;
+  volatile display_screen_t* display;
   uint8_t           item_text_len = 0;
   char*             item_data_string;
   uint8_t           buff_pos;
-  uint8_t           m;
+  uint8_t           m, n;
 
   // ***
   display = sui.active_display;
-
 
   for(uint8_t index=0; index < display->items_cnt; index++)
   {
     // display buffer insert position
     buff_pos = 0;
 
-    item_id = display->item[index].id;
+    item_id = display->item[index]->id;
 
     // call update item's data function
-    if(display->item[index].update_data != NULL && !display->item[index].activated)
+    if(display->item[index]->update_data != NULL && !display->item[index]->activated)
     {
-      display->item[index].data = display->item[index].update_data(item_id);
+      display->item[index]->data = display->item[index]->update_data(item_id);
     }
 
     // Calculate buffer insert position
-    buff_pos = display->item[index].text_position.x;
+    buff_pos = display->item[index]->text_position.x;
     // correct buffer insert position according to item's position row
-    (display->item[index].text_position.y > 0) ? (buff_pos += 16) : (buff_pos);
+    (display->item[index]->text_position.y > 0) ? (buff_pos += 16) : (buff_pos);
 
-    // Copy text of item to buffer
-    strncpy(  (char*) &sui.display_buffer[buff_pos],
-              display->item[index].p_text,
-              strlen(display->item[index].p_text));
+    n = 0;
+    m = strlen(display->item[index]->p_text);
+    while(n < m)
+    {
+      sui.display_buffer[buff_pos + n] = display->item[index]->p_text[n];
+      n++;
+    }
+//    // Copy text of item to buffer
+//    strncpy(  (char*) &sui.display_buffer[buff_pos],
+//              display->item[index].p_text,
+//              strlen(display->item[index].p_text));
 
     // ***
     // CONVERT NUMBERS TO CHARACTERS
-    if(display->item[index].type == DISPLAY_ITEM_NUMERIC)
+    if(display->item[index]->type == DISPLAY_ITEM_NUMERIC)
     {
-      if(display->item[index].p_text != NULL)
+      if(display->item[index]->p_text != NULL)
       {
         // length of textual specifier of item (TMP, WTR etc.)
-        item_text_len = strlen(display->item[index].p_text);
+        item_text_len = strlen(display->item[index]->p_text);
       }
       else
       {
@@ -285,19 +314,19 @@ static void system_user_update_display(void)
       }
 
       // string with item data(numeric) converted to text
-      item_data_string = convert_num_to_str(display->item[index].data);
+      item_data_string = convert_num_to_str(display->item[index]->data);
 
       buff_pos = 0;
-      buff_pos = display->item[index].text_position.x + item_text_len;
+      buff_pos = display->item[index]->text_position.x + item_text_len;
       // correct buffer insert position according to item's position row
-      (display->item[index].text_position.y > 0) ? (buff_pos += 16) : (buff_pos);
+      (display->item[index]->text_position.y > 0) ? (buff_pos += 16) : (buff_pos);
 
       // zeroing place for new data
       sui.display_buffer[buff_pos] = '0';
       sui.display_buffer[buff_pos+1] = '0';
 
       // shift character 1 position right if it is less than 0
-      if(display->item[index].data < 10)
+      if(display->item[index]->data < 10)
       {
         buff_pos += 1;
       }
@@ -336,9 +365,8 @@ static void system_user_update_display(void)
 void sui_item_action(int16_t encoder_ticks)
 {
   uint8_t         index     = sui.active_item_index;
-  ctrl_item_id_t  parameter = sui.active_display->item[index].id;
-  uint16_t        tmp = 0;
-  char*           data_text;
+  ctrl_item_id_t  parameter = sui.active_display->item[index]->id;
+  //uint16_t        tmp = 0;
 
   switch(parameter)
   {
@@ -347,13 +375,10 @@ void sui_item_action(int16_t encoder_ticks)
       // add/substract encoder ticks
       // set value
 
-
-      encoder_deactivate_button();  // temporary code
     break;
 
     case CURRENT_TIME_MINS:
 
-      encoder_deactivate_button();  // temporary code
     break;
 
     case LIGHT_STATUS:
@@ -361,86 +386,73 @@ void sui_item_action(int16_t encoder_ticks)
       if(growbox_get_light_status())
       {
         growbox_set_light(DISABLE);
+        main_screen_light.p_text  = LIGHT_OFF_TEXT;
+        light_status.p_text       = LIGHT_OFF_TEXT;
       }
       else
       {
         growbox_set_light(ENABLE);
+        main_screen_light.p_text  = LIGHT_ON_TEXT;
+        light_status.p_text       = LIGHT_ON_TEXT;
       }
+
+
+
       encoder_deactivate_button();
     break;
 
     case LIGHT_T_ON_TIME:
 
-      encoder_deactivate_button();  // temporary code
     break;
 
     case LIGHT_T_OFF_TIME:
 
-      encoder_deactivate_button();  // temporary code
     break;
 
     case CURRENT_AIR_TEMP:
-      while(encoder_button_activated())
-      {
         temperature.data += encoder_ticks;
         main_screen_temperature.data = temperature.data;
-
-        tmp = strlen(temperature.p_text);
 
         if(temperature.data > 35)   // @TODO: max temp make a parameter
         {
           temperature.data = 35;
+          main_screen_temperature.data = temperature.data;
         }
 
-        data_text = convert_num_to_str(temperature.data);
-        lcd216_puts(temperature.text_position.x + tmp,
-                    temperature.text_position.y,
-                    data_text);
-
-        encoder_reset_ticks();
-        vTaskDelay(40);
-      }
+        growbox_set_temperature(temperature.data);
     break;
 
     case AIR_HEATER:
 
-      encoder_deactivate_button();  // temporary code
     break;
 
     case AIR_OUTLET:
 
-      encoder_deactivate_button();  // temporary code
     break;
 
     case WATERING_STATUS:
 
-      encoder_deactivate_button();  // temporary code
     break;
 
     case WATER_T_ON_TIME:
 
-      encoder_deactivate_button();  // temporary code
     break;
 
     case WATER_T_OFF_TIME:
 
-      encoder_deactivate_button();  // temporary code
     break;
 
     case ONLINE_LINK_STATUS:
 
-      encoder_deactivate_button();  // temporary code
     break;
 
     case SELECT_WIFI_AP:
 
-      encoder_deactivate_button();  // temporary code
     break;
 
     case WATER_LEVEL:
     default:
-      encoder_deactivate_button();  // temporary code
-      // empty
+
     break;
 
   }
@@ -514,7 +526,8 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
     break;
 
     case ONLINE_LINK_STATUS:
-
+      online_status.p_text = "OFL";
+      online_connection_status.p_text = "STS:OFL";
     break;
 
     case SELECT_WIFI_AP:
@@ -603,7 +616,7 @@ static void sui_main_screen_init(void)
 
   online_status.id                          = ONLINE_LINK_STATUS;
   online_status.type                        = DISPLAY_ITEM_TEXTUAL;
-  online_status.p_text                      = "OFL";
+  online_status.p_text                      = NULL;
   online_status.text_position.x             = 13;
   online_status.text_position.y             = LCD216_SECOND_ROW;
   online_status.update_data                 = sui_update_screen_item_data;
@@ -612,14 +625,14 @@ static void sui_main_screen_init(void)
   online_status.activated                   = false;
 
   // Main screen items array init
-  main_screen_items[0]                      = main_screen_temperature;
-  main_screen_items[1]                      = main_screen_light;
-  main_screen_items[2]                      = water_level;
-  main_screen_items[3]                      = time_hours;
-  main_screen_items[4]                      = time_mins;
-  main_screen_items[5]                      = online_status;
-  main_screen_items[6]                      = go_to_prev_screen;
-  main_screen_items[7]                      = go_to_next_screen;
+  main_screen_items[0]                      = &main_screen_temperature;
+  main_screen_items[1]                      = &main_screen_light;
+  main_screen_items[2]                      = &water_level;
+  main_screen_items[3]                      = &time_hours;
+  main_screen_items[4]                      = &time_mins;
+  main_screen_items[5]                      = &online_status;
+  main_screen_items[6]                      = &go_to_prev_screen;
+  main_screen_items[7]                      = &go_to_next_screen;
 
   // Init main display object
   main_display.item       = main_screen_items;
@@ -657,11 +670,11 @@ static void sui_temperature_screen_init(void)
   air_outlet_status.activated       = false;
 
   // *** Temperature display
-  temperature_screen_items[0] = temperature;
-  temperature_screen_items[1] = heater_status;
-  temperature_screen_items[2] = air_outlet_status;
-  temperature_screen_items[3] = go_to_prev_screen;
-  temperature_screen_items[4] = go_to_next_screen;
+  temperature_screen_items[0] = &temperature;
+  temperature_screen_items[1] = &heater_status;
+  temperature_screen_items[2] = &air_outlet_status;
+  temperature_screen_items[3] = &go_to_prev_screen;
+  temperature_screen_items[4] = &go_to_next_screen;
 
   temperature_display.item      = temperature_screen_items;
   temperature_display.items_cnt = TEMPERATURE_SCREEN_ELEMENTS_NUMBER;
@@ -704,11 +717,11 @@ static void sui_water_screen_init(void)
   water_t_off.activated         = false;
 
   // *** Water display
-  water_screen_items[0] = water_screen_level;
-  water_screen_items[1] = water_t_on;
-  water_screen_items[2] = water_t_off;
-  water_screen_items[3] = go_to_prev_screen;
-  water_screen_items[4] = go_to_next_screen;
+  water_screen_items[0] = &water_screen_level;
+  water_screen_items[1] = &water_t_on;
+  water_screen_items[2] = &water_t_off;
+  water_screen_items[3] = &go_to_prev_screen;
+  water_screen_items[4] = &go_to_next_screen;
 
   water_display.item      = water_screen_items;
   water_display.items_cnt = WATER_SCREEN_ELEMENTS_NUMBER;
@@ -752,11 +765,11 @@ static void sui_light_screen_init(void)
 
 
   // *** Light display
-  light_screen_items[0] = light_status;
-  light_screen_items[1] = light_t_on;
-  light_screen_items[2] = light_t_off;
-  light_screen_items[3] = go_to_prev_screen;
-  light_screen_items[4] = go_to_next_screen;
+  light_screen_items[0] = &light_status;
+  light_screen_items[1] = &light_t_on;
+  light_screen_items[2] = &light_t_off;
+  light_screen_items[3] = &go_to_prev_screen;
+  light_screen_items[4] = &go_to_next_screen;
 
   light_display.item      = light_screen_items;
   light_display.items_cnt = LIGHT_SCREEN_ELEMENTS_NUMBER;
@@ -770,7 +783,7 @@ static void sui_connection_screen_init(void)
 {
   online_connection_status.id               = ONLINE_LINK_STATUS;
   online_connection_status.type             = DISPLAY_ITEM_TEXTUAL;
-  online_connection_status.p_text           = "STS:";
+  online_connection_status.p_text           = NULL;
   online_connection_status.text_position.x  = 0;
   online_connection_status.text_position.y  = LCD216_FIRST_ROW;
   online_connection_status.update_data      = sui_update_screen_item_data;
@@ -788,10 +801,10 @@ static void sui_connection_screen_init(void)
   select_wi_fi_ap.activated                 = false;
 
   // *** Connection display
-  connection_screen_items[0] = online_connection_status;
-  connection_screen_items[1] = select_wi_fi_ap;
-  connection_screen_items[3] = go_to_prev_screen;
-  connection_screen_items[4] = go_to_next_screen;
+  connection_screen_items[0] = &online_connection_status;
+  connection_screen_items[1] = &select_wi_fi_ap;
+  connection_screen_items[2] = &go_to_prev_screen;
+  connection_screen_items[3] = &go_to_next_screen;
 
   connection_display.item       = connection_screen_items;
   connection_display.items_cnt  = CONNECTION_SCREEN_ELEMENTS_NUMBER;
@@ -831,11 +844,11 @@ static void sui_set_time_screen_init(void)
   set_time_screen_minutes.activated       = false;
 
   // *** Set time display
-  set_time_screen_items[0] = set_time_screen_text;
-  set_time_screen_items[1] = set_time_screen_hours;
-  set_time_screen_items[2] = set_time_screen_minutes;
-  set_time_screen_items[3] = go_to_prev_screen;
-  set_time_screen_items[4] = go_to_next_screen;
+  set_time_screen_items[0] = &set_time_screen_text;
+  set_time_screen_items[1] = &set_time_screen_hours;
+  set_time_screen_items[2] = &set_time_screen_minutes;
+  set_time_screen_items[3] = &go_to_prev_screen;
+  set_time_screen_items[4] = &go_to_next_screen;
 
   set_time_display.item       = set_time_screen_items;
   set_time_display.items_cnt  = SET_TIME_SCREEN_ELEMENTS_NUMBER;
@@ -852,6 +865,7 @@ static void sui_go_to_prev_screen(int16_t dummy)
   sui.active_item_index = 0;
   system_user_interface_set_active_display(sui.active_display->prev);
   encoder_deactivate_button();
+  go_to_prev_screen.activated = false;
 }
 
 
@@ -863,5 +877,6 @@ static void sui_go_to_next_screen(int16_t dummy)
   sui.active_item_index = 0;
   system_user_interface_set_active_display(sui.active_display->next);
   encoder_deactivate_button();
+  go_to_next_screen.activated = false;
 }
 

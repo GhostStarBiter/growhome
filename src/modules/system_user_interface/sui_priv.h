@@ -26,7 +26,7 @@
 #define TEMPERATURE_SCREEN_ELEMENTS_NUMBER  5
 #define WATER_SCREEN_ELEMENTS_NUMBER        5
 #define LIGHT_SCREEN_ELEMENTS_NUMBER        5
-#define CONNECTION_SCREEN_ELEMENTS_NUMBER   5
+#define CONNECTION_SCREEN_ELEMENTS_NUMBER   4
 #define SET_TIME_SCREEN_ELEMENTS_NUMBER     5
 
 
@@ -76,7 +76,7 @@ typedef struct {
 typedef struct screen{
     struct screen*  prev;
     struct screen*  next;
-    screen_item_t*  item;
+    screen_item_t** item;
     uint8_t         items_cnt;
 } display_screen_t;
 
