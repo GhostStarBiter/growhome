@@ -9,7 +9,7 @@
 
 //  If set to 1
 //  don't remap SWD pins for LCD216 usage
-#define APPLICATION_DEBUG                   1
+#define APPLICATION_DEBUG                   0
 
 
 //  APPLICATION
@@ -65,8 +65,8 @@
 #define SERVO_TIMER_PERIOD                  20000                                   // 20 ms
 
 #define SERVO_AIR_OUTLET_CLOSED             0
-#define SERVO_AIR_EXCHANGE_ANGLE            15
-#define SERVO_AIR_OUTLET_ANGLE              45
+#define SERVO_AIR_EXCHANGE_ANGLE            45
+#define SERVO_AIR_OUTLET_ANGLE              90
 
 // ****
 #define SIM800_RESET                        GPIO_Pin_1
