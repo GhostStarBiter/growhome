@@ -204,23 +204,6 @@ static void system_user_interface_update(void)
 
   index = sui.active_item_index;
 
-
-  // *** Check button status
-  if(encoder_button_activated())
-  {
-    if(sui.active_display->item[index]->activated)
-    {
-      //growbox_set_control_mode(CONTROL_MODE_AUTOMATIC);
-      sui.active_display->item[index]->activated = false;
-    }
-    else
-    {
-      growbox_set_control_mode(CONTROL_MODE_MANUAL);
-      sui.active_display->item[index]->activated = true;
-      sui.active_display->item[index]->action(delta_ticks);
-    }
-  }
-
   system_user_update_display();
 
   // *** Check Encoder rotation
@@ -251,6 +234,18 @@ static void system_user_interface_update(void)
     }
   }
 
+  // *** Check button status
+  if(encoder_button_activated())
+  {
+      growbox_set_control_mode(CONTROL_MODE_MANUAL);
+      sui.active_display->item[index]->activated = true;
+      sui.active_display->item[index]->action(delta_ticks);
+  }
+  else
+  {
+    sui.active_display->item[index]->activated = false;
+  }
+
 
   prev_ticks = current_ticks;
 }
@@ -268,6 +263,13 @@ static void system_user_update_display(void)
 
   // ***
   display = sui.active_display;
+
+  // clean display buffer
+  for(uint8_t i = 0; i < SUI_DISPLAY_BUFFER_SIZE; i++)
+  {
+    sui.display_buffer[i] = ' ';
+  }
+
 
   for(uint8_t index=0; index < display->items_cnt; index++)
   {
@@ -395,8 +397,6 @@ void sui_item_action(int16_t encoder_ticks)
         main_screen_light.p_text  = LIGHT_ON_TEXT;
         light_status.p_text       = LIGHT_ON_TEXT;
       }
-
-
 
       encoder_deactivate_button();
     break;
