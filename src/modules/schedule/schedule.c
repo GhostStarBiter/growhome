@@ -87,6 +87,7 @@ static void check_light_schedule(
     mcu_time_t      current_time,
     FunctionalState *greenhouse_light_state)
 {
+  uint32_t minutes_schedule, minutes_current_time;
   // Check LIGHT schedule for today
   if( *greenhouse_light_state != ENABLE &&
       schedule.day[current_day].light.on_time.hour <= current_time.hour &&
@@ -103,6 +104,7 @@ static void check_light_schedule(
 
     schedule.day[current_day].light.expected_endtime.min   +=
         schedule.day[current_day].light.on_time.min;
+
     schedule.day[current_day].light.expected_endtime.hour  +=
         schedule.day[current_day].light.on_time.hour;
 
@@ -119,9 +121,12 @@ static void check_light_schedule(
     }
   }
 
+  minutes_schedule = schedule.day[current_day].light.expected_endtime.hour*60 + schedule.day[current_day].light.expected_endtime.min;
+  minutes_current_time = current_time.hour*60 + current_time.min;
+
   if(*greenhouse_light_state == ENABLE &&
-      schedule.day[current_day].light.expected_endtime.hour <= current_time.hour &&
-      schedule.day[current_day].light.expected_endtime.min <= current_time.min)
+      minutes_schedule <= minutes_current_time
+     )
   {
     *greenhouse_light_state = DISABLE;
   }

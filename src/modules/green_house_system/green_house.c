@@ -65,8 +65,8 @@ void growbox_system_init(void)
   water_init();
 
   // ***
-  init_time.hour = 7;
-  init_time.min = 00;
+  init_time.hour  = 10;
+  init_time.min   = 59;
   mcu_rtc_set_time(init_time);
 
   // ***
@@ -164,6 +164,7 @@ static void growbox_control(void)
       {
         growbox_set_heater_status(DISABLE);
         water_set_pump_power(0);
+        growbox.manual_mode_timeout = 0;
         once_action = true;
       }
 
@@ -175,7 +176,6 @@ static void growbox_control(void)
       else
       {
         growbox_set_control_mode(CONTROL_MODE_AUTOMATIC);
-        growbox.manual_mode_timeout = 0;
         once_action = false;
       }
     break;

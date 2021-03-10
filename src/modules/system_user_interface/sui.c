@@ -151,7 +151,6 @@ static void system_user_interface_set_active_display(display_screen_t* p_set_scr
       sui.display_buffer[i] = ' ';
     }
   }
-
 }
 
 
@@ -204,7 +203,7 @@ static void system_user_interface_update(void)
 
   index = sui.active_item_index;
 
-  system_user_update_display();
+
 
   // *** Check Encoder rotation
   current_ticks = encoder_get_ticks();
@@ -219,11 +218,29 @@ static void system_user_interface_update(void)
     if(!sui.active_display->item[index]->activated)
     {
 
-      sui.active_item_index += delta_ticks;
-
-      if(sui.active_item_index >= sui.active_display->items_cnt)
+      if(delta_ticks > 0)
       {
-        sui.active_item_index = 0;//(sui.active_display->items_cnt);
+        sui.active_item_index += delta_ticks;
+
+        if(sui.active_item_index >= sui.active_display->items_cnt)
+        {
+          sui.active_item_index = 0;//(sui.active_display->items_cnt);
+        }
+      }
+      else if(delta_ticks < 0)
+      {
+        if(sui.active_item_index >= 1)
+        {
+          sui.active_item_index -= 1;
+        }
+        else
+        {
+          sui.active_item_index = sui.active_display->items_cnt - 1;
+        }
+      }
+      else
+      {
+        // nothing
       }
 
       // Update index of currently active item
@@ -237,8 +254,6 @@ static void system_user_interface_update(void)
   // *** Check button status
   if(encoder_button_activated())
   {
-      growbox_set_control_mode(CONTROL_MODE_MANUAL);
-      sui.active_display->item[index]->activated = true;
       sui.active_display->item[index]->action(delta_ticks);
   }
   else
@@ -247,7 +262,18 @@ static void system_user_interface_update(void)
   }
 
 
+  if(sui.active_display->item[index]->activated)
+  {
+    growbox_set_control_mode(CONTROL_MODE_MANUAL);
+  }
+  else
+  {
+    growbox_set_control_mode(CONTROL_MODE_AUTOMATIC);
+  }
+
   prev_ticks = current_ticks;
+
+  system_user_update_display();
 }
 
 
@@ -368,7 +394,8 @@ void sui_item_action(int16_t encoder_ticks)
 {
   uint8_t         index     = sui.active_item_index;
   ctrl_item_id_t  parameter = sui.active_display->item[index]->id;
-  //uint16_t        tmp = 0;
+  uint32_t        ul_tmp = 0;
+  mcu_time_t      set_time;
 
   switch(parameter)
   {
@@ -376,11 +403,33 @@ void sui_item_action(int16_t encoder_ticks)
       // get instant time
       // add/substract encoder ticks
       // set value
+      sui.active_display->item[index]->activated = true;
+      time_hours.data += encoder_ticks;
+      if(time_hours.data > 24)
+      {
+        time_hours.data = 0;
+      }
+      set_time_screen_hours.data = time_hours.data;
 
+      set_time = mcu_rtc_get_time();
+      set_time.hour = time_hours.data;
+
+      mcu_rtc_set_time(set_time);
     break;
 
     case CURRENT_TIME_MINS:
+      sui.active_display->item[index]->activated = true;
+      time_mins.data += encoder_ticks;
+      if(time_mins.data > 60)
+      {
+        time_mins.data = 0;
+      }
+      set_time_screen_minutes.data = time_mins.data;
 
+      set_time = mcu_rtc_get_time();
+      set_time.min = time_mins.data;
+
+      mcu_rtc_set_time(set_time);
     break;
 
     case LIGHT_STATUS:
@@ -397,7 +446,7 @@ void sui_item_action(int16_t encoder_ticks)
         main_screen_light.p_text  = LIGHT_ON_TEXT;
         light_status.p_text       = LIGHT_ON_TEXT;
       }
-
+      sui.active_display->item[index]->activated = true;
       encoder_deactivate_button();
     break;
 
@@ -418,7 +467,7 @@ void sui_item_action(int16_t encoder_ticks)
           temperature.data = 35;
           main_screen_temperature.data = temperature.data;
         }
-
+        sui.active_display->item[index]->activated = true;
         growbox_set_temperature(temperature.data);
     break;
 
