@@ -103,6 +103,9 @@
 #define WATER_TANK_LEVEL_CONVERSION_ORDER   3
 #define CHANNEL_WATER_TANK                  (WATER_TANK_LEVEL_CONVERSION_ORDER - 1)
 
+#define WATER_PUMP_DEFAULT_POWER            50  // [%]
+#define WATER_TANK_MINIMAL_LEVEL            10  // [%]
+
 // ESP wifi module RST pin
 #define ESP_RST_PORT                        GPIOA
 #define ESP_RST_PIN                         GPIO_Pin_5

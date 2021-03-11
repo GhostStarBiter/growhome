@@ -1,6 +1,6 @@
 #include "green_house_priv.h"
 
-green_house_t growbox;
+volatile green_house_t growbox;
 
 uint8_t u8_income_air_measurements_buffer[MEASUREMENTS_BUFFER_SIZE];
 uint8_t u8_mixed_air_measurements_buffer[MEASUREMENTS_BUFFER_SIZE];
@@ -322,11 +322,11 @@ static void growbox_control_water_supply(void)
 {
   if(growbox.water_pump_status == ENABLE)
   {
-    water_set_pump_power(60);
+    water_pump_set_status(ENABLE);
   }
   else
   {
-    water_set_pump_power(0);
+    water_pump_set_status(DISABLE);
   }
 }
 

@@ -17,6 +17,7 @@
 
 #include "schedule/schedule.h"
 #include "green_house_system/green_house.h"
+#include "water/water.h"
 
 #include "sui.h"
 
@@ -25,7 +26,7 @@
 #define MAIN_SCREEN_ELEMENTS_NUMBER         8
 #define TEMPERATURE_SCREEN_ELEMENTS_NUMBER  5
 #define WATER_SCREEN_ELEMENTS_NUMBER        5
-#define LIGHT_SCREEN_ELEMENTS_NUMBER        5
+#define LIGHT_SCREEN_ELEMENTS_NUMBER        4
 #define CONNECTION_SCREEN_ELEMENTS_NUMBER   4
 #define SET_TIME_SCREEN_ELEMENTS_NUMBER     5
 
@@ -37,14 +38,14 @@ typedef enum {
   CURRENT_TIME_MINS           = 3,
   LIGHT_STATUS                = 5,
   LIGHT_T_ON_TIME             = 7,
-  LIGHT_T_OFF_TIME            = 9,
+  LIGHT_DURATION              = 9,
   CURRENT_AIR_TEMP            = 11,
   AIR_HEATER                  = 13,
   AIR_OUTLET                  = 15,
-  WATERING_STATUS             = 17,
+  WATER_POWER                 = 17,
   WATER_LEVEL                 = 19,
   WATER_T_ON_TIME             = 21,
-  WATER_T_OFF_TIME            = 23,
+  WATER_CYCLE                 = 23,
   ONLINE_LINK_STATUS          = 25,
   SELECT_WIFI_AP              = 27
 } ctrl_item_id_t;
