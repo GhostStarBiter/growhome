@@ -36,13 +36,19 @@
 #define GROWBOX_TASK_TIMEOUT                1       // [tick] == ms
 
 
-#define GROWBOX_MANUAL_MODE_TIMEOUT         60*1000 // 60 seconds (with respect to GROWBOX TASK CYCLE)
+#define GROWBOX_MANUAL_MODE_TIMEOUT         20*1000 // 20 seconds (with respect to GROWBOX TASK CYCLE)
 #define AIR_HEATER_CYCLE_TIME               5000    // 5 seconds
 #define AIR_HEATER_MIN_DUTY                 2000
 
-#define GROWBOX_DEFAULT_TEMPERATURE         28
+#define GROWBOX_DEFAULT_TEMPERATURE         26
 #define AIR_REGULATION_TOLERANCE_DEGREES    1
+#define AIR_TEMP_PI_CTRL_KP                 30
+#define AIR_TEMP_PI_CTRL_KI                 0.001
 
+#define GROWBOX_AIR_MIX_CYCLE_TIMEOUT       5*60*1000 // [ms]
+#define GROWBOX_AIR_MIX_ACTIVE_TIMEOUT      3*60*1000 // [ms]
+
+#define GROWBOX_MAX_LIGHT_ON_HOURS          14
 
 // ***
 // ADC measurement
@@ -65,8 +71,8 @@
 #define SERVO_TIMER_PERIOD                  20000                                   // 20 ms
 
 #define SERVO_AIR_OUTLET_CLOSED             0
-#define SERVO_AIR_EXCHANGE_ANGLE            45
-#define SERVO_AIR_OUTLET_ANGLE              90
+#define SERVO_AIR_EXCHANGE_ANGLE            90
+#define SERVO_AIR_OUTLET_ANGLE              135
 
 // ****
 #define SIM800_RESET                        GPIO_Pin_1
@@ -103,8 +109,12 @@
 #define WATER_TANK_LEVEL_CONVERSION_ORDER   3
 #define CHANNEL_WATER_TANK                  (WATER_TANK_LEVEL_CONVERSION_ORDER - 1)
 
-#define WATER_PUMP_DEFAULT_POWER            50  // [%]
+#define WATER_PUMP_DEFAULT_POWER            30  // [%]
 #define WATER_TANK_MINIMAL_LEVEL            10  // [%]
+#define WATER_T_ON_SEC_DEFAULT              15  // [sec]
+#define WATER_T_ON_SEC_MAX                  59  // [sec]
+#define WATER_INTERVAL_MINS_DEFAULT         5   // [mins]
+#define WATER_INTERVAL_MINS_MAX             90  // [mins]
 
 // ESP wifi module RST pin
 #define ESP_RST_PORT                        GPIOA

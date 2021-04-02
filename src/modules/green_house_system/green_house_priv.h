@@ -22,6 +22,7 @@
 #include "onewire/onewire.h"
 #include "schedule/schedule.h"
 #include "filter/filter.h"
+#include "pi_ctrl/pi_ctrl.h"
 
 // this module
 #include "green_house.h"
@@ -54,6 +55,7 @@ typedef struct {
   temp_control_state_t  state;
   uint8_t               desired;
   int8_t                delta;                     // [-127 .. 127]
+  pi_ctrl_object_t      pi_controler;
 } temperature_t;
 
 
@@ -66,6 +68,7 @@ typedef struct{
     FunctionalState   air_outlet_valve_status;        // OPEN/CLOSED
 
     FunctionalState   air_mix_status;                 // ON/OFF
+    uint32_t          air_mix_time_counter;
 
     heater_t          heater;
     temperature_t     temperature;
@@ -138,6 +141,12 @@ static void growbox_set_heater_status
 (
     FunctionalState heater_state
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Run timeout handling for air mix ventilator control
+//--------------------------------------------------------------------------------------------------
+static void growbox_control_air_mix(void);
 
 
 #endif  // GROW_GREEN_PRIV_H

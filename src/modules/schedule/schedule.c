@@ -1,6 +1,6 @@
 #include "schedule_priv.h"
 
-schedule_t schedule;
+volatile schedule_t schedule;
 
 //--------------------------------------------------------------------------------------------------
 void schedule_init(void)
@@ -25,13 +25,13 @@ static void schedule_init_week(void)
   {
     schedule.day[weekday].light.on_time.hour     = 7;
     schedule.day[weekday].light.on_time.min      = 0;
-    schedule.day[weekday].light.duration_sec     = 60;//DAY_DEFAULT_LIGHT_DURATION;
+    schedule.day[weekday].light.duration_sec     = DAY_DEFAULT_LIGHT_DURATION;
 
     schedule.day[weekday].water.on_time.hour     = 7;
     schedule.day[weekday].water.on_time.min      = 0;
 
-    schedule.day[weekday].water.duration_sec     = 10;
-    schedule.day[weekday].water.interval_minutes = 4;
+    schedule.day[weekday].water.duration_sec     = WATER_T_ON_SEC_DEFAULT;
+    schedule.day[weekday].water.interval_minutes = WATER_INTERVAL_MINS_DEFAULT;
   }
 }
 
@@ -88,41 +88,22 @@ static void check_light_schedule(
     FunctionalState *greenhouse_light_state)
 {
   uint32_t minutes_schedule, minutes_current_time;
-  // Check LIGHT schedule for today
-  if( *greenhouse_light_state != ENABLE &&
-      schedule.day[current_day].light.on_time.hour <= current_time.hour &&
-      schedule.day[current_day].light.on_time.min <= current_time.min)
+
+  minutes_schedule = schedule.day[current_day].light.on_time.hour*60 + schedule.day[current_day].light.on_time.min;
+  minutes_current_time = current_time.hour*60 + current_time.min;
+
+  if( minutes_current_time >= minutes_schedule )
   {
     *greenhouse_light_state = ENABLE;
-
-    // convert duration to minutes
-    schedule.day[current_day].light.expected_endtime.min =
-        schedule.day[current_day].light.duration_sec / 60;
-    // extract duration hours
-    schedule.day[current_day].light.expected_endtime.hour  =
-        schedule.day[current_day].light.duration_sec / 3600;
-
-    schedule.day[current_day].light.expected_endtime.min   +=
-        schedule.day[current_day].light.on_time.min;
-
-    schedule.day[current_day].light.expected_endtime.hour  +=
-        schedule.day[current_day].light.on_time.hour;
-
-    if(schedule.day[current_day].light.expected_endtime.min > 59)
-    {
-      schedule.day[current_day].light.expected_endtime.min %= 60;
-      schedule.day[current_day].light.expected_endtime.hour++;
-    }
-
-    if(schedule.day[current_day].light.expected_endtime.hour > 23)
-    {
-      schedule.day[current_day].light.expected_endtime.hour = 23;
-      schedule.day[current_day].light.expected_endtime.min = 59;
-    }
+  }
+  else
+  {
+    *greenhouse_light_state = DISABLE;
   }
 
+  schedule_light_update_expected_endtime();
+
   minutes_schedule = schedule.day[current_day].light.expected_endtime.hour*60 + schedule.day[current_day].light.expected_endtime.min;
-  minutes_current_time = current_time.hour*60 + current_time.min;
 
   if(*greenhouse_light_state == ENABLE &&
       minutes_schedule <= minutes_current_time
@@ -134,78 +115,59 @@ static void check_light_schedule(
 
 
 //--------------------------------------------------------------------------------------------------
+void schedule_light_update_expected_endtime(void)
+{
+  weekday_t current_day = schedule.current_day;
+  // convert duration to minutes
+  schedule.day[current_day].light.expected_endtime.min =
+      schedule.day[current_day].light.duration_sec % 60;
+  // extract duration hours
+  schedule.day[current_day].light.expected_endtime.hour  =
+      schedule.day[current_day].light.duration_sec / 3600;
+
+  schedule.day[current_day].light.expected_endtime.min   +=
+      schedule.day[current_day].light.on_time.min;
+
+  schedule.day[current_day].light.expected_endtime.hour  +=
+      schedule.day[current_day].light.on_time.hour;
+
+  if(schedule.day[current_day].light.expected_endtime.min > 59)
+  {
+    schedule.day[current_day].light.expected_endtime.min %= 60;
+    schedule.day[current_day].light.expected_endtime.hour++;
+  }
+
+  if(schedule.day[current_day].light.expected_endtime.hour > 23)
+  {
+    schedule.day[current_day].light.expected_endtime.hour = 23;
+    schedule.day[current_day].light.expected_endtime.min = 59;
+  }
+}
+
+
+//--------------------------------------------------------------------------------------------------
 static void check_water_schedule(
     weekday_t       current_day,
     mcu_time_t      current_time,
     FunctionalState *greenhouse_water_pump_state)
 {
 
-  // Check WATER schedule for today
-  if( *greenhouse_water_pump_state != ENABLE &&
-      schedule.day[current_day].water.on_time.hour <= current_time.hour &&
-      schedule.day[current_day].water.on_time.min <= current_time.min &&
-      schedule.day[current_day].water.on_time.sec <= current_time.sec)
+  uint32_t minutes_schedule, minutes_current_time, seconds_current_time;
+
+  minutes_current_time = current_time.hour*60 + current_time.min;
+
+  seconds_current_time = minutes_current_time*60 + current_time.sec;
+
+  if(minutes_current_time % schedule.day[current_day].water.interval_minutes == 0)
   {
+    schedule.day[current_day].water.expected_endtime.sec = seconds_current_time + schedule.day[current_day].water.duration_sec;
     *greenhouse_water_pump_state = ENABLE;
 
-    // extract duration hours
-    schedule.day[current_day].water.expected_endtime.hour =
-        schedule.day[current_day].water.duration_sec / 3600;
-    // convert duration to minutes
-    schedule.day[current_day].water.expected_endtime.min  =
-        schedule.day[current_day].water.duration_sec / 60;
-    // define duration seconds
-    schedule.day[current_day].water.expected_endtime.sec  =
-        schedule.day[current_day].water.duration_sec % 60;
-
-    schedule.day[current_day].water.expected_endtime.hour +=
-        schedule.day[current_day].water.on_time.hour;
-
-    schedule.day[current_day].water.expected_endtime.min  +=
-        schedule.day[current_day].water.on_time.min;
-
-    schedule.day[current_day].water.expected_endtime.sec  +=
-        schedule.day[current_day].water.on_time.sec;
-
-    if(schedule.day[current_day].water.expected_endtime.sec > 59)
-    {
-      schedule.day[current_day].water.expected_endtime.sec %= 60;
-      schedule.day[current_day].water.expected_endtime.min++;
-    }
-    if(schedule.day[current_day].water.expected_endtime.min > 59)
-    {
-      schedule.day[current_day].water.expected_endtime.min %= 60;
-      schedule.day[current_day].water.expected_endtime.hour++;
-    }
-
-    if(schedule.day[current_day].water.expected_endtime.hour > 23)
-    {
-      schedule.day[current_day].water.expected_endtime.hour = 23;
-      schedule.day[current_day].water.expected_endtime.min = 59;
-      schedule.day[current_day].water.expected_endtime.sec = 59;
-    }
   }
 
-  if(*greenhouse_water_pump_state == ENABLE &&
-      schedule.day[current_day].water.expected_endtime.hour <= current_time.hour &&
-      schedule.day[current_day].water.expected_endtime.min <= current_time.min &&
-      schedule.day[current_day].water.expected_endtime.sec <= current_time.sec)
+  if(seconds_current_time > schedule.day[current_day].water.expected_endtime.sec)
   {
     *greenhouse_water_pump_state = DISABLE;
-
-    // update next ON time according to interval
-    schedule.day[current_day].water.on_time.min =
-        schedule.day[current_day].water.expected_endtime.min +
-        schedule.day[current_day].water.interval_minutes;
-
-    schedule.day[current_day].water.on_time.hour =
-        schedule.day[current_day].water.expected_endtime.hour;
-
-    if(schedule.day[current_day].water.on_time.min > 59)
-    {
-      schedule.day[current_day].water.on_time.min %= 60;
-      schedule.day[current_day].water.on_time.hour++;
-    }
   }
 }
 
@@ -256,3 +218,85 @@ result_t schedule_set_water_schedule(
 
   return result;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+void schedule_set_light_t_on_hour(uint8_t hour_turn_light_on)
+{
+  weekday_t current_day = schedule.current_day;
+  schedule.day[current_day].light.on_time.hour = hour_turn_light_on;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+uint8_t schedule_get_light_t_on_hour(void)
+{
+  weekday_t current_day = schedule.current_day;
+  return schedule.day[current_day].light.on_time.hour;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+void schedule_set_light_t_on_min(uint8_t min_turn_light_on)
+{
+  weekday_t current_day = schedule.current_day;
+  schedule.day[current_day].light.on_time.min = min_turn_light_on;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+uint8_t schedule_get_light_t_on_min(void)
+{
+  weekday_t current_day = schedule.current_day;
+  return schedule.day[current_day].light.on_time.min;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+void schedule_set_light_duration_hours(uint8_t light_on_duration)
+{
+  weekday_t current_day = schedule.current_day;
+  schedule.day[current_day].light.duration_sec = light_on_duration*3600;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+uint8_t schedule_get_light_duration_hours(void)
+{
+  weekday_t current_day = schedule.current_day;
+  uint8_t light_duration_hours = schedule.day[current_day].light.duration_sec/3600;
+  return light_duration_hours;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+void schedule_set_water_duration_sec(uint8_t water_duration_sec)
+{
+  weekday_t current_day = schedule.current_day;
+  schedule.day[current_day].water.duration_sec = water_duration_sec;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+uint32_t schedule_get_water_duration_sec(void)
+{
+  weekday_t current_day = schedule.current_day;
+  return schedule.day[current_day].water.duration_sec;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+void schedule_set_water_interval_mins(uint8_t new_water_interval_mins)
+{
+  weekday_t current_day = schedule.current_day;
+  schedule.day[current_day].water.interval_minutes = new_water_interval_mins;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+uint32_t schedule_get_water_interval_mins(void)
+{
+  weekday_t current_day = schedule.current_day;
+  return schedule.day[current_day].water.interval_minutes;
+}
+

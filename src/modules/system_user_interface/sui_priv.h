@@ -26,7 +26,7 @@
 #define MAIN_SCREEN_ELEMENTS_NUMBER         8
 #define TEMPERATURE_SCREEN_ELEMENTS_NUMBER  5
 #define WATER_SCREEN_ELEMENTS_NUMBER        5
-#define LIGHT_SCREEN_ELEMENTS_NUMBER        4
+#define LIGHT_SCREEN_ELEMENTS_NUMBER        7
 #define CONNECTION_SCREEN_ELEMENTS_NUMBER   4
 #define SET_TIME_SCREEN_ELEMENTS_NUMBER     5
 
@@ -37,8 +37,11 @@ typedef enum {
   CURRENT_TIME_HOURS          = 1,
   CURRENT_TIME_MINS           = 3,
   LIGHT_STATUS                = 5,
-  LIGHT_T_ON_TIME             = 7,
-  LIGHT_DURATION              = 9,
+  LIGHT_SCREEN_TEXT           = 6,
+  TIME_HOUR_SET_LIGHT_ON      = 7,
+  TIME_MINUTE_SET_LIGHT_ON    = 8,
+  LIGHT_DURATION_TEXT         = 9,
+  LIGHT_DURATION_HOURS        = 10,
   CURRENT_AIR_TEMP            = 11,
   AIR_HEATER                  = 13,
   AIR_OUTLET                  = 15,

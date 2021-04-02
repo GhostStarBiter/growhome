@@ -5,9 +5,9 @@
 #define SECONDS_IN_HOUR                (MINUTES_IN_HOUR*60)
 
 typedef struct{
-    uint8_t hour;
-    uint8_t min;
-    uint8_t sec;
+    uint8_t   hour;
+    uint8_t   min;
+    uint32_t  sec;
 } mcu_time_t;
 
 

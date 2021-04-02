@@ -48,14 +48,17 @@ screen_item_t* temperature_screen_items[TEMPERATURE_SCREEN_ELEMENTS_NUMBER];
 //  *** WATER SCREEN
 screen_item_t water_pump_power,
               water_t_on,
-              water_t_off;
+              water_t_cycle;
 
 screen_item_t* water_screen_items[WATER_SCREEN_ELEMENTS_NUMBER];
 
 //------------------------------------------------------------------------------
 //  *** LIGHT SCREEN
-screen_item_t light_t_on,
-              light_duration;
+screen_item_t light_text,
+              light_t_on_hour,
+              light_t_on_min,
+              light_duration_text,
+              light_duration_hours;
 
 screen_item_t* light_screen_items[LIGHT_SCREEN_ELEMENTS_NUMBER];
 
@@ -173,7 +176,7 @@ void system_user_interface_task(void *pvParameters)
 
   system_user_interface_init();
 
-  //system_user_interface_startup_screen();
+  system_user_interface_startup_screen();
 
   lcd216_cursor_on();
   lcd216_blink_on();
@@ -326,11 +329,6 @@ static void system_user_update_display(void)
       sui.display_buffer[buff_pos + n] = display->item[index]->p_text[n];
       n++;
     }
-//    // Copy text of item to buffer
-//    strncpy(  (char*) &sui.display_buffer[buff_pos],
-//              display->item[index].p_text,
-//              strlen(display->item[index].p_text));
-
     // ***
     // CONVERT NUMBERS TO CHARACTERS
     if(display->item[index]->type == DISPLAY_ITEM_NUMERIC)
@@ -437,7 +435,7 @@ void sui_item_action(int16_t encoder_ticks)
     break;
 
     case LIGHT_STATUS:
-      // change light status
+      sui.active_display->item[index]->activated = true;
       if(growbox_get_light_status())
       {
         growbox_set_light(DISABLE);
@@ -448,29 +446,56 @@ void sui_item_action(int16_t encoder_ticks)
         growbox_set_light(ENABLE);
         main_screen_light.p_text  = LIGHT_ON_TEXT;
       }
-      sui.active_display->item[index]->activated = true;
       encoder_deactivate_button();
     break;
 
-    case LIGHT_T_ON_TIME:
-
+    case TIME_HOUR_SET_LIGHT_ON:
+      sui.active_display->item[index]->activated = true;
+      light_t_on_hour.data += encoder_ticks;
+      if(light_t_on_hour.data > 23)
+      {
+        light_t_on_hour.data = 0;
+      }
+      schedule_set_light_t_on_hour(light_t_on_hour.data);
+      growbox_set_light(DISABLE);
+      schedule_light_update_expected_endtime();
     break;
 
-    case LIGHT_DURATION:
+    case TIME_MINUTE_SET_LIGHT_ON:
+      sui.active_display->item[index]->activated = true;
+      light_t_on_min.data += encoder_ticks;
+      if(light_t_on_min.data > 59)
+      {
+        light_t_on_min.data = 0;
+      }
+      schedule_set_light_t_on_min(light_t_on_min.data);
+      growbox_set_light(DISABLE);
+      schedule_light_update_expected_endtime();
+    break;
 
+    case LIGHT_DURATION_HOURS:
+      sui.active_display->item[index]->activated = true;
+      light_duration_hours.data += encoder_ticks;
+      if(light_duration_hours.data > GROWBOX_MAX_LIGHT_ON_HOURS)
+      {
+        light_duration_hours.data = 0;
+      }
+      schedule_set_light_duration_hours(light_duration_hours.data);
+      growbox_set_light(DISABLE);
+      schedule_light_update_expected_endtime();
     break;
 
     case CURRENT_AIR_TEMP:
-        temperature.data += encoder_ticks;
-        main_screen_temperature.data = temperature.data;
+      sui.active_display->item[index]->activated = true;
+      temperature.data += encoder_ticks;
+      main_screen_temperature.data = temperature.data;
 
-        if(temperature.data > 35)   // @TODO: max temp make a parameter
-        {
-          temperature.data = 35;
-          main_screen_temperature.data = temperature.data;
-        }
-        sui.active_display->item[index]->activated = true;
-        growbox_set_temperature(temperature.data);
+      if(temperature.data > 35)   // @TODO: max temp make a parameter
+      {
+        temperature.data = 35;
+        main_screen_temperature.data = temperature.data;
+      }
+      growbox_set_temperature(temperature.data);
     break;
 
     case AIR_HEATER:
@@ -482,7 +507,7 @@ void sui_item_action(int16_t encoder_ticks)
     break;
 
     case WATER_POWER:
-      // set water pump power in percents (up to 99 %)
+      sui.active_display->item[index]->activated = true;
       ul_tmp = water_get_pump_power();
       ul_tmp += encoder_ticks;
       if(ul_tmp > 99 || ul_tmp < WATER_PUMP_DEFAULT_POWER)
@@ -490,18 +515,42 @@ void sui_item_action(int16_t encoder_ticks)
         ul_tmp = WATER_PUMP_DEFAULT_POWER;
       }
       water_pump_power.data = ul_tmp;
-      sui.active_display->item[index]->activated = true;
       water_set_pump_power(ul_tmp);
     break;
 
     case WATER_T_ON_TIME:
       // set water pump active time in seconds (up to 90)
+      sui.active_display->item[index]->activated = true;
+      ul_tmp = schedule_get_water_duration_sec();
+      ul_tmp += encoder_ticks;
+      if(ul_tmp > WATER_T_ON_SEC_MAX)
+      {
+        ul_tmp = WATER_T_ON_SEC_MAX;
+      }
+      else if(ul_tmp < WATER_T_ON_SEC_DEFAULT)
+      {
+        ul_tmp = WATER_T_ON_SEC_DEFAULT;
+      }
 
+      water_t_on.data = ul_tmp;
+      schedule_set_water_duration_sec(ul_tmp);
     break;
 
     case WATER_CYCLE:
       // set water cycle in minutes (up to 90)
-
+      sui.active_display->item[index]->activated = true;
+      ul_tmp = schedule_get_water_interval_mins();
+      ul_tmp += encoder_ticks;
+      if(ul_tmp > WATER_INTERVAL_MINS_MAX)
+      {
+        ul_tmp = WATER_INTERVAL_MINS_MAX;
+      }
+      else if(ul_tmp < WATER_INTERVAL_MINS_DEFAULT)
+      {
+        ul_tmp = WATER_INTERVAL_MINS_DEFAULT;
+      }
+      water_t_cycle.data = ul_tmp;
+      schedule_set_water_interval_mins(ul_tmp);
     break;
 
     case ONLINE_LINK_STATUS:
@@ -549,12 +598,16 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
       }
     break;
 
-    case LIGHT_T_ON_TIME:
-
+    case TIME_HOUR_SET_LIGHT_ON:
+      updated_data = schedule_get_light_t_on_hour();
     break;
 
-    case LIGHT_DURATION:
+    case TIME_MINUTE_SET_LIGHT_ON:
+      updated_data = schedule_get_light_t_on_min();
+    break;
 
+    case LIGHT_DURATION_HOURS:
+      updated_data = schedule_get_light_duration_hours();
     break;
 
     case CURRENT_AIR_TEMP:
@@ -562,7 +615,15 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
     break;
 
     case AIR_HEATER:
-
+      updated_data = (uint16_t) growbox_get_heater_status();
+      if(updated_data == ENABLE)
+      {
+        heater_status.p_text  = "HTR:ON";
+      }
+      else
+      {
+        heater_status.p_text  = "HTR:OFF";
+      }
     break;
 
     case AIR_OUTLET:
@@ -578,11 +639,11 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
     break;
 
     case WATER_T_ON_TIME:
-      // growbox_get_water_t_on_time()  [seconds]
+      updated_data = (uint8_t) schedule_get_water_duration_sec();
     break;
 
     case WATER_CYCLE:
-      // growbox_get_water_cycle_time() [minutes]
+      updated_data = (uint8_t) schedule_get_water_interval_mins();
     break;
 
     case ONLINE_LINK_STATUS:
@@ -711,7 +772,7 @@ static void sui_temperature_screen_init(void)
 
   heater_status.id                  = AIR_HEATER;
   heater_status.type                = DISPLAY_ITEM_TEXTUAL;
-  heater_status.p_text              = "HTR:";
+  heater_status.p_text              = NULL;
   heater_status.text_position.x     = 0;
   heater_status.text_position.y     = LCD216_SECOND_ROW;
   heater_status.update_data         = sui_update_screen_item_data;
@@ -766,20 +827,20 @@ static void sui_water_screen_init(void)
   water_t_on.action           = sui_item_action;
   water_t_on.activated        = false;
 
-  water_t_off.id                = WATER_CYCLE;
-  water_t_off.type              = DISPLAY_ITEM_NUMERIC;
-  water_t_off.p_text            = "CYCLE:";
-  water_t_off.text_position.x   = 8;
-  water_t_off.text_position.y   = LCD216_SECOND_ROW;
-  water_t_off.update_data       = sui_update_screen_item_data;
-  water_t_off.data              = sui_update_screen_item_data(water_t_off.id);
-  water_t_off.action            = sui_item_action;
-  water_t_off.activated         = false;
+  water_t_cycle.id                = WATER_CYCLE;
+  water_t_cycle.type              = DISPLAY_ITEM_NUMERIC;
+  water_t_cycle.p_text            = "CYCLE:";
+  water_t_cycle.text_position.x   = 8;
+  water_t_cycle.text_position.y   = LCD216_SECOND_ROW;
+  water_t_cycle.update_data       = sui_update_screen_item_data;
+  water_t_cycle.data              = sui_update_screen_item_data(water_t_cycle.id);
+  water_t_cycle.action            = sui_item_action;
+  water_t_cycle.activated         = false;
 
   // *** Water display
   water_screen_items[0] = &water_pump_power;
   water_screen_items[1] = &water_t_on;
-  water_screen_items[2] = &water_t_off;
+  water_screen_items[2] = &water_t_cycle;
   water_screen_items[3] = &go_to_prev_screen;
   water_screen_items[4] = &go_to_next_screen;
 
@@ -793,32 +854,64 @@ static void sui_water_screen_init(void)
 //--------------------------------------------------------------------------------------------------
 static void sui_light_screen_init(void)
 {
-  light_t_on.id                 = LIGHT_T_ON_TIME;
-  light_t_on.type               = DISPLAY_ITEM_NUMERIC;
-  light_t_on.p_text             = "LT TON:";
-  light_t_on.text_position.x    = 0;
-  light_t_on.text_position.y    = LCD216_FIRST_ROW;
-  light_t_on.update_data        = sui_update_screen_item_data;
-  light_t_on.data               = sui_update_screen_item_data(light_t_on.id);
-  light_t_on.action             = sui_item_action;
-  light_t_on.activated          = false;
+  light_text.id                 = LIGHT_SCREEN_TEXT;
+  light_text.type               = DISPLAY_ITEM_TEXTUAL;
+  light_text.p_text             = "LT ON@";
+  light_text.text_position.x    = 0;
+  light_text.text_position.y    = LCD216_FIRST_ROW;
+  light_text.update_data        = NULL;
+  light_text.action             = NULL;
+  light_text.activated          = false;
 
-  light_duration.id                = LIGHT_DURATION;
-  light_duration.type              = DISPLAY_ITEM_NUMERIC;
-  light_duration.p_text            = "DURATION:";
-  light_duration.text_position.x   = 0;
-  light_duration.text_position.y   = LCD216_SECOND_ROW;
-  light_duration.update_data       = sui_update_screen_item_data;
-  light_duration.data              = sui_update_screen_item_data(light_duration.id);
-  light_duration.action            = sui_item_action;
-  light_duration.activated         = false;
+  light_t_on_hour.id                 = TIME_HOUR_SET_LIGHT_ON;
+  light_t_on_hour.type               = DISPLAY_ITEM_NUMERIC;
+  light_t_on_hour.p_text             = NULL;
+  light_t_on_hour.text_position.x    = 6;
+  light_t_on_hour.text_position.y    = LCD216_FIRST_ROW;
+  light_t_on_hour.update_data        = sui_update_screen_item_data;
+  light_t_on_hour.data               = sui_update_screen_item_data(light_t_on_hour.id);
+  light_t_on_hour.action             = sui_item_action;
+  light_t_on_hour.activated          = false;
+
+  light_t_on_min.id                 = TIME_MINUTE_SET_LIGHT_ON;
+  light_t_on_min.type               = DISPLAY_ITEM_NUMERIC;
+  light_t_on_min.p_text             = NULL;
+  light_t_on_min.text_position.x    = 9;
+  light_t_on_min.text_position.y    = LCD216_FIRST_ROW;
+  light_t_on_min.update_data        = sui_update_screen_item_data;
+  light_t_on_min.data               = sui_update_screen_item_data(light_t_on_min.id);
+  light_t_on_min.action             = sui_item_action;
+  light_t_on_min.activated          = false;
+
+
+  light_duration_text.id                = LIGHT_DURATION_TEXT;
+  light_duration_text.type              = DISPLAY_ITEM_TEXTUAL;
+  light_duration_text.p_text            = "BE ON    HOURS";
+  light_duration_text.text_position.x   = 0;
+  light_duration_text.text_position.y   = LCD216_SECOND_ROW;
+  light_duration_text.update_data       = NULL;
+  light_duration_text.action            = NULL;
+  light_duration_text.activated         = false;
+
+  light_duration_hours.id               = LIGHT_DURATION_HOURS;
+  light_duration_hours.type             = DISPLAY_ITEM_NUMERIC;
+  light_duration_hours.p_text           = NULL;
+  light_duration_hours.text_position.x  = 6;
+  light_duration_hours.text_position.y  = LCD216_SECOND_ROW;
+  light_duration_hours.update_data      = sui_update_screen_item_data;
+  light_duration_hours.data             = sui_update_screen_item_data(light_duration_hours.id);
+  light_duration_hours.action           = sui_item_action;
+  light_duration_hours.activated        = false;
 
 
   // *** Light display
-  light_screen_items[0] = &light_t_on;
-  light_screen_items[1] = &light_duration;
-  light_screen_items[2] = &go_to_prev_screen;
-  light_screen_items[3] = &go_to_next_screen;
+  light_screen_items[0] = &light_text;
+  light_screen_items[1] = &light_t_on_hour;
+  light_screen_items[2] = &light_t_on_min;
+  light_screen_items[3] = &light_duration_text;
+  light_screen_items[4] = &light_duration_hours;
+  light_screen_items[5] = &go_to_prev_screen;
+  light_screen_items[6] = &go_to_next_screen;
 
   light_display.item      = light_screen_items;
   light_display.items_cnt = LIGHT_SCREEN_ELEMENTS_NUMBER;

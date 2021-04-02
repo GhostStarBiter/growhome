@@ -1,6 +1,8 @@
 #ifndef SCHEDULE_PRIV_H_
 #define SCHEDULE_PRIV_H_
 
+#include "main/application_map.h"
+
 #include "rtc/mcu_rtc.h"
 #include "schedule.h"
 
@@ -8,8 +10,7 @@
 
 #define WATER_CYCLES_PER_DAY                512
 
-#define DAY_DEFAULT_LIGHT_DURATION_HOURS    12
-#define DAY_DEFAULT_LIGHT_DURATION          DAY_DEFAULT_LIGHT_DURATION_HOURS*SECONDS_IN_HOUR
+#define DAY_DEFAULT_LIGHT_DURATION          GROWBOX_MAX_LIGHT_ON_HOURS*SECONDS_IN_HOUR
 
 typedef struct{
     activity_schedule_t light;
