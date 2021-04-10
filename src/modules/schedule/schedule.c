@@ -45,11 +45,11 @@ void schedule_update
 {
   mcu_time_t current_time = mcu_rtc_get_time();
   // check day's 24 hours elapsed
-  if(current_time.hour > 23)
+  if(current_time.hour == 00
+      && current_time.min == 00
+      && current_time.sec == 00)
   {
-    mcu_rtc_reset_counter();
     schedule_switch_date();
-    current_time = mcu_rtc_get_time();
   }
 
 
@@ -152,23 +152,29 @@ static void check_water_schedule(
     FunctionalState *greenhouse_water_pump_state)
 {
 
-  uint32_t minutes_schedule, minutes_current_time, seconds_current_time;
+  uint32_t minutes_current_time, seconds_current_time;
 
   minutes_current_time = current_time.hour*60 + current_time.min;
 
   seconds_current_time = minutes_current_time*60 + current_time.sec;
 
-  if(minutes_current_time % schedule.day[current_day].water.interval_minutes == 0)
+
+  if((seconds_current_time > schedule.day[current_day].water.expected_endtime.sec)
+      && (ENABLE == *greenhouse_water_pump_state))
   {
+    *greenhouse_water_pump_state = DISABLE;
+  }
+
+
+
+  if((minutes_current_time % schedule.day[current_day].water.interval_minutes) == 0)
+  {
+
     schedule.day[current_day].water.expected_endtime.sec = seconds_current_time + schedule.day[current_day].water.duration_sec;
     *greenhouse_water_pump_state = ENABLE;
 
   }
 
-  if(seconds_current_time > schedule.day[current_day].water.expected_endtime.sec)
-  {
-    *greenhouse_water_pump_state = DISABLE;
-  }
 }
 
 
