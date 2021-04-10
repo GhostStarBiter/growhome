@@ -9,7 +9,7 @@
 
 //  If set to 1
 //  don't remap SWD pins for LCD216 usage
-#define APPLICATION_DEBUG                   0
+#define APPLICATION_DEBUG                   1
 
 
 //  APPLICATION
@@ -25,8 +25,8 @@
 // ***
 // Task priorities
 #define SERVICE_TASK_PRIORITY               1
-#define USER_INTERFACE_TASK_PRIORITY        2
-#define NETWORK_COMM_TASK_PRIORITY          3
+#define NETWORK_COMM_TASK_PRIORITY          2
+#define USER_INTERFACE_TASK_PRIORITY        3
 #define GROWBOX_TASK_PRIORITY               4
 
 // ***
@@ -40,7 +40,7 @@
 #define AIR_HEATER_CYCLE_TIME               5000    // 5 seconds
 #define AIR_HEATER_MIN_DUTY                 2000
 
-#define GROWBOX_DEFAULT_TEMPERATURE         26
+#define GROWBOX_DEFAULT_TEMPERATURE         23
 #define AIR_REGULATION_TOLERANCE_DEGREES    1
 #define AIR_TEMP_PI_CTRL_KP                 30
 #define AIR_TEMP_PI_CTRL_KI                 0.001
@@ -109,7 +109,7 @@
 #define WATER_TANK_LEVEL_CONVERSION_ORDER   3
 #define CHANNEL_WATER_TANK                  (WATER_TANK_LEVEL_CONVERSION_ORDER - 1)
 
-#define WATER_PUMP_DEFAULT_POWER            30  // [%]
+#define WATER_PUMP_DEFAULT_POWER            40  // [%]
 #define WATER_TANK_MINIMAL_LEVEL            10  // [%]
 #define WATER_T_ON_SEC_DEFAULT              15  // [sec]
 #define WATER_T_ON_SEC_MAX                  59  // [sec]
