@@ -75,6 +75,7 @@ void growbox_system_init(void)
   // ***
   init_time.hour  = 6;
   init_time.min   = 59;
+  init_time.sec   = 50;
   mcu_rtc_set_time(init_time);
 
   // ***
