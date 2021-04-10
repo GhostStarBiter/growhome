@@ -6,6 +6,11 @@
 
 #include "mcu_rtc.h"
 
+#define HOURS_PER_DAY                     24
+
+#define SECONDS_PER_HOUR                  3600
+
+
 typedef struct {
   uint32_t    counter;
   mcu_time_t  current;
