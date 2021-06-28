@@ -14,6 +14,7 @@
 // MCU includes
 #include "mcu_peripherals/adc/mcu_adc.h"
 #include "mcu_peripherals/gpio/mcu_gpio.h"
+#include "mcu_peripherals/uart/mcu_uart.h"
 
 // MODULES includes
 #include "water/water.h"
@@ -40,46 +41,37 @@ typedef struct {
   uint16_t        cycle_counter_ms;
 } heater_t;
 
-typedef struct {
-  uint16_t  p_coeff;
-  uint16_t  p_counter;
-  uint16_t  i_coeff;
-  uint16_t  i_counter;
-  uint16_t  delta;
-  int32_t   sum;
-  int16_t   output;
-} regulator_t;
-
 
 typedef struct {
   temp_control_state_t  state;
-  uint8_t               desired;
+  uint8_t               set_point;
   int8_t                delta;                     // [-127 .. 127]
   pi_ctrl_object_t      pi_controler;
 } temperature_t;
 
 
 typedef struct{
-    control_mode_t    mode;                  // MANUAL/AUTOMATIC
-    FunctionalState   light_status;          // ON/OFF
-    FunctionalState   water_pump_status;     // ON/OFF
-    uint16_t          manual_mode_timeout;
-    FunctionalState   air_income_status;              // ON/OFF
-    FunctionalState   air_outlet_valve_status;        // OPEN/CLOSED
-
-    FunctionalState   air_mix_status;                 // ON/OFF
-    uint32_t          air_mix_time_counter;
-
+    control_mode_t    mode;                           // MANUAL/AUTOMATIC
     heater_t          heater;
     temperature_t     temperature;
-
-    uint8_t           desired_humidity;
-    int8_t            delta_humidity;                 // [-127 .. 127]
 
     filter_object_t   water_level;                    // 0 .. 100 %
     filter_object_t   mixed_air_temp;
     filter_object_t   income_air_temp;
     filter_object_t   humidity;
+
+    FunctionalState   light_status;                   // ON/OFF
+    FunctionalState   water_pump_status;              // ON/OFF
+    FunctionalState   air_income_status;              // ON/OFF
+    FunctionalState   air_outlet_valve_status;        // OPEN/CLOSED
+    FunctionalState   air_mix_status;                 // ON/OFF
+
+    uint16_t          manual_mode_timeout;
+    uint32_t          air_mix_time_counter;
+
+    uint8_t           desired_humidity;
+    int8_t            delta_humidity;                 // [-127 .. 127]
+
 } green_house_t;
 
 
@@ -87,6 +79,12 @@ typedef struct{
 /// @brief Update measurements of temperatures, humidity, water level
 //--------------------------------------------------------------------------------------------------
 static void growbox_update_measurements(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief Update system run-time data (temp deviation, heater work-time etc.)
+//--------------------------------------------------------------------------------------------------
+static void growbox_update_statistics(void);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -146,7 +144,7 @@ static void growbox_set_heater_status
 //--------------------------------------------------------------------------------------------------
 /// @brief  Run timeout handling for air mix ventilator control
 //--------------------------------------------------------------------------------------------------
-static void growbox_control_air_mix(void);
+static void growbox_control_air_mix(bool temp_request);
 
 
 #endif  // GROW_GREEN_PRIV_H
