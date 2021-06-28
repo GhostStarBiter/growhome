@@ -23,13 +23,13 @@ void heartbeat_blink_led(void)
 //--------------------------------------------------------------------------------------------------
 void service_task(void *pvParameters)
 {
-  const TickType_t  x_service_task_timeout_ms = SERVICE_TASK_TIMEOUT;
+  const TickType_t  x_service_task_cycle_ms = SERVICE_TASK_CYCLE;
   TickType_t        x_last_wake_time          = xTaskGetTickCount();
 
   for(;;)
   {
     // ***
-    vTaskDelayUntil(&x_last_wake_time, x_service_task_timeout_ms);
+    vTaskDelayUntil(&x_last_wake_time, x_service_task_cycle_ms);
 
     // ***
     mcu_rtc_update();

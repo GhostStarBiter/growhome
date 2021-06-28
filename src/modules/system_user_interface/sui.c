@@ -171,7 +171,7 @@ static void system_user_interface_startup_screen(void)
 //--------------------------------------------------------------------------------------------------
 void system_user_interface_task(void *pvParameters)
 {
-  const TickType_t x_interface_task_timeout_ms = INTERFACE_TASK_TIMEOUT;
+  const TickType_t x_interface_task_cycle_ms = INTERFACE_TASK_CYCLE;
   TickType_t        x_last_wake_time;
 
   system_user_interface_init();
@@ -187,7 +187,7 @@ void system_user_interface_task(void *pvParameters)
   for(;;)
   {
     // ***
-    vTaskDelayUntil(&x_last_wake_time, x_interface_task_timeout_ms);
+    vTaskDelayUntil(&x_last_wake_time, x_interface_task_cycle_ms);
 
     // ***
     system_user_interface_update();
