@@ -87,12 +87,6 @@ typedef struct screen{
 } display_screen_t;
 
 
-typedef struct {
-    mcu_time_t  set_time;             //@todo maybe (char) and convert to numbers?
-    uint8_t     ip_address[4];        // [0..255] [0..225] [0..225] [0..225]
-} user_settings_t;
-
-
 // structure controlled by encoder input which is interrupt-processed
 typedef struct {
     // *** INTERNAL VARIABLES
@@ -101,7 +95,6 @@ typedef struct {
 
     // *** OBJECTS
     display_screen_t* active_display;
-    user_settings_t   settings;
 } system_user_interface_t;
 
 
