@@ -1,227 +1,218 @@
-#include "esp_priv.h"
+#include "stm32f10x.h"
+#include "task.h"
 
-esp_struct_t esp;
+#include "configuration/peripherals_config.h"
+
+#include "stm32f10x_usart.h"
+
+#include "gpio/mcu_gpio.h"
+#include "uart/mcu_uart.h"
+#include "utils/utils.h"
+
+#include "string.h"
+#include "esp.h"
+
+#define ESP_SEND_BUF_SIZE                   512
+#define ESP_MAX_COMMAND_LEN                 (ESP_SEND_BUF_SIZE - AT_COMMAND_START_INDEX - sizeof(AT_REQEST_ENDING))
+
+#define ESP_RECV_BUF_SIZE                   512
+
+#define ESP_RESPONSE_TIMEOUT                500   // [ms]
+
+#define ESP_COMPARE_RESPONSE_BUF_SIZE       64    // [bytes]
+
+#define AT_COMMAND_START_INDEX              2     // position in buffer "AT+[command]"
+
+
+#define ESP_RECV_BUFFER_EMPTY               (!esp.recv_size)
+#define ESP_RECV_BUFFER_NOT_FULL            (esp.recv_size < ESP_RECV_BUF_SIZE)
+
+typedef struct{
+    FunctionalState           chip_status;
+    esp_state_t               state;
+    bool                      data_received;
+    uint8_t                   send_buf[ESP_RECV_BUF_SIZE];
+    uint16_t                  send_size;
+    uint8_t                   recv_buf[ESP_SEND_BUF_SIZE];
+    uint16_t                  recv_size;
+    void                      (*process_incoming_data)(uint8_t*);
+} esp_struct_t;
+
 
 //--------------------------------------------------------------------------------------------------
-result_t esp_init(void (*callback_process_incoming_data)(uint8_t*))
+/// @brief Put received over UART data to receive buffer
+//--------------------------------------------------------------------------------------------------
+static void esp_receive_data(uint8_t byte);
+
+//--------------------------------------------------------------------------------------------------
+/// @brief
+//--------------------------------------------------------------------------------------------------
+static void esp_set_state(esp_state_t e_new_sw_status);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief Wait ESP_RESPONSE_TIMEOUT ms or less if data receive finished
+//--------------------------------------------------------------------------------------------------
+static result_t esp_timeout_wait_receive_finished(void);
+
+//--------------------------------------------------------------------------------------------------
+/// @brief
+//--------------------------------------------------------------------------------------------------
+result_t esp_search_response(char* search, char* buffer);
+
+
+
+//  *****************
+esp_struct_t esp;
+
+
+//--------------------------------------------------------------------------------------------------
+void esp_init(void (*callback_process_incoming_data)(uint8_t*))
 {
-  result_t operation_result;
-  esp.send_buf[0] = 'A';
-  esp.send_buf[1] = 'T';
+  esp.chip_status = DISABLE;
+  esp.state = ESP_RESET;
+  esp.process_incoming_data = callback_process_incoming_data;
+
+  mcu_uart_set_dma_buffer_address((uint32_t) &esp.send_buf);
+
+  memset(esp.send_buf, 0, ESP_SEND_BUF_SIZE);
+
+
+  esp_update();
+}
+
+
+//--------------------------------------------------------------------------------------------------
+static void esp_reset_and_enable_chip(void)
+{
+  mcu_gpio_set_esp_reset_status(ENABLE);
+  vTaskDelay(200);
+
+  mcu_gpio_set_esp_enable_status(ENABLE);
+  vTaskDelay(50);
+  esp.chip_status = ENABLE;
 
   mcu_gpio_set_esp_reset_status(DISABLE);
 
-  esp.chip_status = ENABLE;
-  mcu_gpio_set_esp_enable_status(esp.chip_status);
-
-  mcu_uart_set_dma_buffer_address((uint32_t) &esp.send_buf[0]);
-
   // wait for ESP startup after EN signal presence
-  vTaskDelay(500);
-
-  operation_result = esp_send_command(AT_STARTUP_TEST, esp_simple_response);
-
-  if(callback_process_incoming_data != NULL)
-  {
-    esp.process_incoming_data = callback_process_incoming_data;
-  }
-  else
-  {
-    operation_result = result_fail;
-  }
-
-  return operation_result;
+  vTaskDelay(1000);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 void esp_update(void)
 {
-  uint8_t response_ok;
-  uint8_t* buf_ptr;
+  result_t operation_result;
 
-  switch(esp.wifi_mode)
+  switch(esp.state)
   {
-    case WIFI_SEND_REQUEST:
-      if(mcu_uart_is_transmission_complete())
-      {
-        esp_next_event(WIFI_WAIT_RESPONSE);
-      }
-    break;
+    case ESP_RESET:
+      esp_reset_and_enable_chip();
 
-    case WIFI_WAIT_RESPONSE:
-      if(esp.receive_finished)
-      {
-        esp_next_event(WIFI_PROCESS_RESPONSE);
-      }
-      else
-      {
-        vTaskDelay(1);
-      }
-    break;
+      memcpy(esp.send_buf, AT_COMMAND_PREFIX, sizeof(AT_COMMAND_PREFIX));
+      strcat((char*) esp.send_buf, AT_RESET);
+      strcat((char*) esp.send_buf, AT_REQEST_ENDING);
 
-    case WIFI_PROCESS_RESPONSE:
-      if(esp.response_type == esp_simple_response)
-      {
-        // @TODO:
-        //              Example
-        //      AT      ->        AT\r\r\n\r\n OK\r\n
-        //    Write parser
-        // response_ok = !strncmp((char*) esp.recv_buf, AT_RESPONSE_OK, sizeof(AT_RESPONSE_OK));
+      esp.send_size = strlen((char*) esp.send_buf);
 
+      mcu_uart_dma_start_transmit(esp.send_size);
 
-        if(response_ok)
-        {
-          esp.sw_status = ESP_READY;
-        }
-        else
-        {
-          esp.sw_status = ESP_ERROR;
-        }
-        esp.uw_recv_size = 0;
-        memset(esp.recv_buf, 0, ESP_RECV_BUF_SIZE);
-        memset(esp.send_buf, 0, ESP_SEND_BUF_SIZE);
-        esp_next_event(WIFI_IDLE);
-      }
-      else
+      operation_result = esp_timeout_wait_receive_finished();
+
+      if(operation_result)
       {
-        if(result_success == esp_process_incoming_data())
-        {
-          esp.sw_status = ESP_READY;
-        }
-        else
-        {
-          esp.sw_status = ESP_ERROR;
-        }
+        operation_result = esp_search_response("ready", (char*) esp.recv_buf);
+
+        operation_result == result_success ? esp_set_state(ESP_READY) : esp_set_state(ESP_ERROR);
       }
 
-    break;
+      break;
 
-    case WIFI_INCOMING_DATA:
-      if(esp.receive_finished)
+    case ESP_READY:
+
+      break;
+
+    case ESP_INCOMING_DATA:
+
+      if(esp.data_received)
       {
-        buf_ptr = esp.recv_buf;
-        esp.process_incoming_data(buf_ptr);
-        esp_next_event(WIFI_IDLE);
+        esp.process_incoming_data(esp.recv_buf);
+        esp_set_state(ESP_READY);
       }
       else
       {
         vTaskDelay(1);
       }
-    break;
+      break;
 
-    case WIFI_IDLE:
+    case ESP_ERROR:
+
+      break;
+
     default:
 
-    break;
+      break;
   }
 }
 
 
 //--------------------------------------------------------------------------------------------------
-result_t esp_send_command(char* command_string, esp_response_type_t e_expected_response)
+static result_t esp_timeout_wait_receive_finished(void)
 {
-  result_t operation_result = result_success;
-  char* ptr_send_buffer;
-  uint8_t request_size;
+  static uint32_t counter = 0;
+  result_t  result = result_success;
 
-  if(strlen(command_string) < ESP_MAX_COMMAND_LEN &&
-      esp.wifi_mode == WIFI_IDLE)
+  while(!esp.data_received)
   {
-    esp.response_type = e_expected_response;
+    vTaskDelay(1);
+    counter++;
 
-    ptr_send_buffer = (char*) &esp.send_buf[AT_COMMAND_START_INDEX];
-    if(command_string)
+    if(counter > ESP_RESPONSE_TIMEOUT)
     {
-      strcpy(ptr_send_buffer, command_string);
+      counter = 0;
+      esp.state = ESP_ERROR;
+      result = result_fail;
+      break;
     }
+  }
 
-    request_size = strlen("AT") + strlen(command_string);
-    ptr_send_buffer = (char*) &esp.send_buf[request_size];
-    strcpy(ptr_send_buffer, AT_REQEST_ENDING);
+  return result;
+}
 
-    esp.uw_send_size = request_size + strlen(AT_REQEST_ENDING);
-    esp.receive_finished = 0;
 
-    esp_set_status(ESP_BUSY);
-    esp_next_event(WIFI_SEND_REQUEST);
-    mcu_uart_dma_start_transmit(esp.uw_send_size);
+//--------------------------------------------------------------------------------------------------
+result_t esp_search_response(char* search, char* buffer)
+{
+  result_t result = result_fail;
+
+  result = (result_t) strstr(buffer, search);
+
+  return result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+static void esp_set_state(esp_state_t new_state)
+{
+  esp.state = new_state;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+static void esp_receive_data(uint8_t byte)
+{
+  uint16_t index;
+
+  if(ESP_RECV_BUFFER_NOT_FULL && !ESP_RECV_BUFFER_EMPTY)
+  {
+    index = esp.recv_size;
   }
   else
   {
-    operation_result = result_fail;
+    index = esp.recv_size = 0;
   }
 
-  return operation_result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-result_t esp_send_data(uint8_t* ptr_data_buf, uint16_t data_size_bytes)
-{
-  result_t operation_result = result_success;
-  char* esp_send_data_command = ESP_COMMAND_SEND_DATA;
-  char* str_data_size;
-  str_data_size = convert_num_to_str(data_size_bytes);
-  strcat(esp_send_data_command, str_data_size);
-
-  esp_send_command(esp_send_data_command, esp_no_response);
-
-
-  return operation_result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-static void esp_next_event(wifi_mode_t e_event)
-{
-  esp.wifi_mode = e_event;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-static void esp_set_status(esp_sw_status e_new_status)
-{
-  esp.sw_status = e_new_status;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-result_t esp_receive_data(uint8_t byte)
-{
-  result_t operation_result = result_fail;
-
-  if(ESP_RECV_BUFFER_NOT_FULL)
-  {
-    if( ESP_RECV_BUFFER_EMPTY &&
-        esp.sw_status == ESP_READY &&
-        esp.wifi_mode == WIFI_IDLE)
-    {
-      esp_set_status(ESP_BUSY);
-      esp_next_event(WIFI_INCOMING_DATA);
-    }
-
-    uint16_t index = esp.uw_recv_size;
-    esp.recv_buf[index] = byte;
-    ++esp.uw_recv_size;
-    operation_result = result_success;
-  }
-
-  return operation_result;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-static result_t esp_process_incoming_data(void)
-{
-  result_t operation_result;
-  //uint8_t arg_pos = 0;
-  //uint8_t index = 0;
-
-  //TODO: add processing of complex response
-  operation_result = result_success;
-
-  return operation_result;
+  esp.recv_size++;
+  esp.recv_buf[index] = byte;
 }
 
 
@@ -229,27 +220,29 @@ static result_t esp_process_incoming_data(void)
 void ESP_INTERFACE_IRQ_HANDLER(void)
 {
   uint8_t data;
+  static bool ssid_name_started = false;
 
+  //  RECEIVE DATA
   if(USART_GetITStatus(ESP_UART_INTERFACE, USART_IT_RXNE) == SET)
   {
     USART_ClearFlag(ESP_UART_INTERFACE, USART_IT_RXNE);
+    USART_ITConfig(ESP_UART_INTERFACE, USART_IT_IDLE, ENABLE);
 
     data = (uint8_t) USART_ReceiveData(ESP_UART_INTERFACE);
-
-    // replace CR or LF characters by Space
-    if( esp.wifi_mode != WIFI_INCOMING_DATA &&
-        ((data == AT_LF_CODE) || (data == AT_CR_CODE)))
-    {
-      data = ' ';
-    }
 
     esp_receive_data(data);
   }
 
+  //  DATA RECEIVING FINISHED
   if(USART_GetITStatus(ESP_UART_INTERFACE, USART_IT_IDLE) == SET)
   {
-    esp.receive_finished = 1;
-    USART_ITConfig(ESP_UART_INTERFACE, USART_IT_RXNE, DISABLE);
-    (void) USART_ReceiveData(ESP_UART_INTERFACE);
+    USART_ClearFlag(ESP_UART_INTERFACE, USART_IT_IDLE);
+
+    esp.data_received = true;
+
+    USART_ITConfig(ESP_UART_INTERFACE, USART_IT_IDLE, DISABLE);
+
+    // what for??
+    //(void) USART_ReceiveData(ESP_UART_INTERFACE);
   }
 }

@@ -1,4 +1,17 @@
-#include "water_priv.h"
+#include "stm32f10x.h"
+
+#include "configuration/peripherals_config.h"
+#include "configuration/water_pump_config.h"
+
+#include "mcu_peripherals/adc/mcu_adc.h"
+#include "mcu_peripherals/tim/mcu_tim.h"
+
+typedef struct {
+    uint8_t         level;
+    uint8_t         pump_power;
+} water_t;
+
+#include "water.h"
 
 water_t water;
 
@@ -14,10 +27,7 @@ void water_init(void)
 //--------------------------------------------------------------------------------------------------
 uint8_t water_get_level(void)
 {
-  uint16_t raw_adc_measure;
-
-  raw_adc_measure = mcu_adc_get_raw_data_channel_water_tank();
-  water.level = raw_adc_measure*99/ADC_MAX_OUTPUT_RAW_VALUE; // in percents
+  water.level = mcu_adc_get_water_tank_level_percents();
 
   return water.level;
 }

@@ -1,23 +1,191 @@
-#include "green_house_priv.h"
+#include <stdlib.h>
 
+#include "stm32f10x.h"
+
+// FreeRTOS includes
+#include "task.h"
+#include "timers.h"
+
+#include "configuration/peripherals_config.h"
+#include "configuration/adc_config.h"
+#include "configuration/app_config.h"
+#include "configuration/task_config.h"
+#include "configuration/servo_config.h"
+
+// MCU includes
+#include "mcu_peripherals/adc/mcu_adc.h"
+#include "mcu_peripherals/gpio/mcu_gpio.h"
+#include "mcu_peripherals/uart/mcu_uart.h"
+
+// MODULES includes
+#include "water/water.h"
+#include "triac/triac.h"
+#include "servo/servo.h"
+
+#if APPLICATION_USE_ONEWIRE_SENSOR
+  #include "onewire/onewire.h"
+#endif
+
+#include "schedule/schedule.h"
+#include "filter/filter.h"
+#include "pi_ctrl/pi_ctrl.h"
+
+// this module
+#include "green_house.h"
+
+typedef enum {
+  NONE,
+  HEAT,
+  COOLDOWN,
+  IN_RANGE
+} temp_control_state_t;
+
+typedef struct {
+  FunctionalState status;                  // ON/OF
+  uint16_t        duty_ms;
+  uint16_t        cycle_counter_ms;
+} heater_t;
+
+typedef enum {
+  SEED,
+  SPROUT,
+  PLANT,
+  BLOOM
+} grow_mode_t;
+
+
+typedef struct {
+  temp_control_state_t  state;
+  uint8_t               set_point;
+  int8_t                delta;                     // [-127 .. 127]
+  pi_ctrl_object_t      pi_controler;
+} temperature_t;
+
+
+typedef struct{
+    control_mode_t    control_mode;                           // MANUAL/AUTOMATIC
+    heater_t          heater;
+    temperature_t     temperature;
+
+    filter_object_t   water_level;                    // 0 .. 100 %
+    filter_object_t   mixed_air_temp;
+    filter_object_t   income_air_temp;
+    filter_object_t   humidity;
+
+    double income_air_measurements_buffer [MEASUREMENTS_BUFFER_SIZE];
+    double mixed_air_measurements_buffer  [MEASUREMENTS_BUFFER_SIZE];
+    double humidity_measurements_buffer   [MEASUREMENTS_BUFFER_SIZE];
+    double water_level_measurements_buffer[WATER_TANK_LEVEL_MEAS_BUFF_SIZE];
+
+    FunctionalState   light_status;                   // ON/OFF
+    FunctionalState   water_pump_status;              // ON/OFF
+    FunctionalState   air_income_status;              // ON/OFF
+    FunctionalState   air_outlet_valve_status;        // OPEN/CLOSED
+    FunctionalState   air_mix_status;                 // ON/OFF
+
+    uint16_t          manual_mode_timeout;
+    uint32_t          air_mix_time_counter;
+
+    uint8_t           desired_humidity;
+    int8_t            delta_humidity;                 // [-127 .. 127]
+
+} green_house_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief Update measurements of temperatures, humidity, water level
+//--------------------------------------------------------------------------------------------------
+static void growbox_update_measurements(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief Update system run-time data (temp deviation, heater work-time etc.)
+//--------------------------------------------------------------------------------------------------
+static void growbox_update_statistics(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Growbox parameters (temp, water, light) control function
+//--------------------------------------------------------------------------------------------------
+static void growbox_control(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Temperature control function
+//--------------------------------------------------------------------------------------------------
+static void growbox_control_temperature(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Water supply control function
+//--------------------------------------------------------------------------------------------------
+static void growbox_control_water_supply(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Light control function
+//--------------------------------------------------------------------------------------------------
+static void growbox_control_light(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Set Income air ventilator intensity
+/// @param  Ventilator power to set in percents
+//--------------------------------------------------------------------------------------------------
+static void growbox_set_income_air_intensity
+(
+    uint8_t intensity_percents
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Set status of Air Mixing ventilator
+/// @param  Air Mixing ventilator status (ENABLE/DISABLE)
+//--------------------------------------------------------------------------------------------------
+static void growbox_set_air_mixing_status
+(
+    FunctionalState e_air_mixing_status
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Set status of Air Heater
+/// @param  Air Heater status (ENABLE/DISABLE)
+//--------------------------------------------------------------------------------------------------
+static void growbox_set_heater_status
+(
+    FunctionalState heater_state
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Run timeout handling for air mix ventilator control
+//--------------------------------------------------------------------------------------------------
+static void growbox_control_air_mix(bool temp_request);
 
 
 volatile green_house_t growbox;
 
-double income_air_measurements_buffer [MEASUREMENTS_BUFFER_SIZE];
-double mixed_air_measurements_buffer  [MEASUREMENTS_BUFFER_SIZE];
-double humidity_measurements_buffer   [MEASUREMENTS_BUFFER_SIZE];
-double water_level_measurements_buffer[WATER_TANK_LEVEL_MEAS_BUFF_SIZE];
+
 
 
 //--------------------------------------------------------------------------------------------------
 void growbox_system_init(void)
 {
-  onewire_init_t  onewire_bus_init_struct;
   servo_init_t    servo_init_struct;
 
+#if APPLICATION_USE_ONEWIRE_SENSOR
+  onewire_init_t  onewire_bus_init_struct;
+  onewire_bus_init_struct.timer        = ONEWIRE_TIMER;
+  onewire_bus_init_struct.gpio_port    = ONEWIRE_PORT;
+  onewire_bus_init_struct.gpio_pin     = ONEWIRE_PIN;
+  onewire_bus_init_struct.EXTIchannel  = ONEWIRE_EXTI_IRQn;
+  onewire_bus_init_struct.EXTI_line    = ONEWIRE_EXTI_LINE;
+  onewire_init(&onewire_bus_init_struct);
+#endif
+
   // ***
-  growbox.mode                            = CONTROL_MODE_AUTOMATIC;
+  growbox.control_mode                            = CONTROL_MODE_AUTOMATIC;
 
   // Init Humidity values filter parameters
 #if APPLICATION_USE_AM2301_TEMP
@@ -27,17 +195,17 @@ void growbox_system_init(void)
 #endif
 
   // Init Income air temperature value filter's parameters
-  growbox.income_air_temp.measurement_buffer  = income_air_measurements_buffer;
+  growbox.income_air_temp.measurement_buffer  = (double*) growbox.income_air_measurements_buffer;
   growbox.income_air_temp.window_size      = MEASUREMENTS_BUFFER_SIZE;
   mean_filter_init( (filter_object_t*) &growbox.income_air_temp);
 
   // Init Mixed air temperature value filter's parameters
-  growbox.mixed_air_temp.measurement_buffer = mixed_air_measurements_buffer;
+  growbox.mixed_air_temp.measurement_buffer = (double*) growbox.mixed_air_measurements_buffer;
   growbox.mixed_air_temp.window_size     = MEASUREMENTS_BUFFER_SIZE;
   mean_filter_init( (filter_object_t*) &growbox.mixed_air_temp);
 
   // Init Water level value filter's parameters
-  growbox.water_level.measurement_buffer  = water_level_measurements_buffer;
+  growbox.water_level.measurement_buffer  = (double*) growbox.water_level_measurements_buffer;
   growbox.water_level.window_size      = WATER_TANK_LEVEL_MEAS_BUFF_SIZE;
   mean_filter_init( (filter_object_t*) &growbox.water_level);
 
@@ -47,14 +215,6 @@ void growbox_system_init(void)
   growbox.temperature.pi_controler.saturation_min = (-100);
   growbox.temperature.pi_controler.sample_time_s = 2;
   pi_ctrl_init( (pi_ctrl_object_t*) &growbox.temperature.pi_controler);
-
-  // ***
-  onewire_bus_init_struct.timer        = ONEWIRE_TIMER;
-  onewire_bus_init_struct.gpio_port    = ONEWIRE_PORT;
-  onewire_bus_init_struct.gpio_pin     = ONEWIRE_PIN;
-  onewire_bus_init_struct.EXTIchannel  = ONEWIRE_EXTI_IRQn;
-  onewire_bus_init_struct.EXTI_line    = ONEWIRE_EXTI_LINE;
-  onewire_init(&onewire_bus_init_struct);
 
   // ***
   servo_init_struct.timer          = SERVO_TIMER;
@@ -151,7 +311,7 @@ FunctionalState growbox_get_light_status(void)
 //--------------------------------------------------------------------------------------------------
 void growbox_set_control_mode(control_mode_t set_control_mode)
 {
-  growbox.mode = set_control_mode;
+  growbox.control_mode = set_control_mode;
 }
 
 
@@ -174,7 +334,7 @@ static void growbox_control(void)
 {
   static bool once_action = false;
 
-  switch(growbox.mode)
+  switch(growbox.control_mode)
   {
     case CONTROL_MODE_MANUAL:
       // in means of safety after system control mode changed to MANUAL
@@ -224,8 +384,6 @@ static void growbox_control(void)
 }
 
 
-static int8_t uart_debug_send_data;
-
 //--------------------------------------------------------------------------------------------------
 static void growbox_control_temperature(void)
 {
@@ -238,54 +396,50 @@ static void growbox_control_temperature(void)
                                     (double) growbox.mixed_air_temp.filtered);
 
 
-
-  //  *** DEBUG START
-  uart_debug_send_data = (int8_t) regulator_output;
-  mcu_uart_set_dma_buffer_address((uint32_t) &uart_debug_send_data);
-  mcu_uart_dma_start_transmit(sizeof(uart_debug_send_data));
-  //  *** DEBUG END
-
-
-
-  if(regulator_output > 5.0)
+  // difference between filtered and desired temp is more than 1 C (respect to LM_60_SW_AMPLIFICATION_RATIO)
+  if(abs(growbox.mixed_air_temp.filtered - growbox.temperature.set_point) > 1*LM_60_SW_AMPLIFICATION_RATIO)
   {
-    // to prevent heater overheat set maximum power of air input ventilator
-    growbox_set_income_air_intensity(100);
-
-    servo_set_angle(SERVO_AIR_OUTLET_CLOSED);
-
-    growbox.temperature.state = HEAT;
-
-    heater_cycle_counter++;
-    growbox.heater.duty_ms = (uint16_t) (regulator_output*AIR_HEATER_CYCLE_TIME/growbox.temperature.pi_controler.saturation_max);
-
-    if(heater_cycle_counter >= AIR_HEATER_CYCLE_TIME)
+    if(regulator_output > 5.0)
     {
-      growbox_set_heater_status(ENABLE);
-      heater_cycle_counter = 0;
+      // to prevent heater overheat set maximum power of air input ventilator
+      growbox_set_income_air_intensity(100);
+
+      servo_set_angle(SERVO_AIR_OUTLET_CLOSED);
+
+      growbox.temperature.state = HEAT;
+
+      heater_cycle_counter++;
+      growbox.heater.duty_ms = (uint16_t) (regulator_output*AIR_HEATER_CYCLE_TIME/growbox.temperature.pi_controler.saturation_max);
+
+      if(heater_cycle_counter >= AIR_HEATER_CYCLE_TIME)
+      {
+        growbox_set_heater_status(ENABLE);
+        heater_cycle_counter = 0;
+      }
+
+      if(heater_cycle_counter > growbox.heater.duty_ms)
+      {
+        growbox_set_heater_status(DISABLE);
+      }
     }
-
-    if(heater_cycle_counter > growbox.heater.duty_ms)
+    else if(regulator_output < -5.0f )
     {
+      growbox.temperature.state = COOLDOWN;
       growbox_set_heater_status(DISABLE);
-      growbox_set_air_mixing_status(ENABLE);
+      servo_set_angle(SERVO_AIR_EXCHANGE_ANGLE);
+      growbox_set_income_air_intensity(75);
+
     }
-  }
-  else if(regulator_output < -5.0f )
-  {
-    growbox.temperature.state = COOLDOWN;
-    growbox_set_heater_status(DISABLE);
-    servo_set_angle(SERVO_AIR_EXCHANGE_ANGLE);
-    growbox_set_income_air_intensity(75);
-    growbox_control_air_mix(false);
   }
   else
   {
-    growbox.temperature.state = IN_RANGE;
+    growbox_set_income_air_intensity(0);
+    growbox_set_heater_status(DISABLE);
     servo_set_angle(SERVO_AIR_OUTLET_CLOSED);
   }
 
   servo_control();
+  growbox_control_air_mix(growbox.heater.status);
 }
 
 
@@ -405,27 +559,29 @@ FunctionalState growbox_get_heater_status(void)
 
 
 //--------------------------------------------------------------------------------------------------
-static void growbox_control_air_mix(bool temp_request)
+static void growbox_control_air_mix(bool heater_status)
 {
-  if(temp_request)
+  if(heater_status)
   {
     growbox_set_air_mixing_status(ENABLE);
     growbox.air_mix_time_counter = 0;
   }
   else
   {
-    if(growbox.air_mix_time_counter < GROWBOX_AIR_MIX_CYCLE_TIMEOUT)
-    {
-      growbox.air_mix_time_counter++;
-    }
-    else if(growbox.air_mix_time_counter < GROWBOX_AIR_MIX_ACTIVE_TIMEOUT)
+    growbox.air_mix_time_counter++;
+
+    if(growbox.air_mix_time_counter < GROWBOX_AIR_MIX_ACTIVE_TIMEOUT)
     {
       growbox_set_air_mixing_status(ENABLE);
     }
     else
     {
-      growbox.air_mix_time_counter = 0;
       growbox_set_air_mixing_status(DISABLE);
+    }
+
+    if(growbox.air_mix_time_counter > GROWBOX_AIR_MIX_CYCLE_TIMEOUT)
+    {
+      growbox.air_mix_time_counter = 0;
     }
   }
 }

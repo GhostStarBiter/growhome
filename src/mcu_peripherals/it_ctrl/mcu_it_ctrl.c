@@ -1,4 +1,23 @@
-#include "mcu_it_ctrl_priv.h"
+#include "misc.h"
+
+#include "configuration/peripherals_config.h"
+
+#include "mcu_it_ctrl.h"
+
+#define IRQ_GPOUR_IMPORTANT                           0
+#define IRQ_GROUP_USUAL                               1
+
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+static void config_irq
+(
+    IRQn_Type irq,
+    uint8_t preempt_prio,
+    uint8_t sub_prio
+);
+
+#include "mcu_it_ctrl.h"
 
 
 //--------------------------------------------------------------------------------------------------

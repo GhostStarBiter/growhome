@@ -1,4 +1,9 @@
-#include "mcu_uart_priv.h"
+#include "stm32f10x.h"
+#include "task.h"
+#include "configuration/peripherals_config.h"
+#include "mcu_uart.h"
+
+#define ESP8266_UART_BAUDRATE               115200
 
 uint32_t  dummy;
 
@@ -43,8 +48,13 @@ void mcu_uart_init(void)
   USART_ITConfig(ESP_UART_INTERFACE, USART_IT_RXNE, ENABLE);
 
   USART_Cmd(ESP_UART_INTERFACE, ENABLE);
+}
 
-  DMA_Cmd(ESP_UART_DMA_TX_CHANNEL, ENABLE);
+
+//--------------------------------------------------------------------------------------------------
+void mcu_uart_dma_stop(void)
+{
+  DMA_Cmd(ESP_UART_DMA_TX_CHANNEL, DISABLE);
 }
 
 
@@ -54,7 +64,7 @@ void  mcu_uart_dma_start_transmit(uint16_t transmission_size)
   while(!mcu_uart_is_transmission_complete())
   {
     vTaskDelay(1);
-    // wait till current transmission is incomplete
+    // wait till current transmission in progress
   }
   DMA_Cmd(ESP_UART_DMA_TX_CHANNEL, DISABLE);
   ESP_UART_DMA_TX_CHANNEL->CNDTR = (uint32_t) transmission_size;

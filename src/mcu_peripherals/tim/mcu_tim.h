@@ -1,8 +1,9 @@
 #ifndef MCU_TIM_H
+
 #define MCU_TIM_H
 
 #include "stm32f10x_tim.h"
-#include "main/application_map.h"
+#include "main/types.h"
 
 //------------------------------------------------------------------------------
 /// @brief  Init function of STM32F103 timers

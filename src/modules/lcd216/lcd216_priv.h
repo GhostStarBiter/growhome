@@ -10,7 +10,7 @@
 #ifndef LCD216_PRIV_H
 #define LCD216_PRIV_H
 
-#include "main/application_map.h"
+#include "configuration/peripherals_config.h"
 #include "stm32f10x_gpio.h"
 
 #include "gpio/mcu_gpio.h"      // debug

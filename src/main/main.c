@@ -2,7 +2,7 @@
 
 
 //--------------------------------------------------------------------------------------------------
-void heartbeat_blink_led(void)
+static void heartbeat_blink_led(void)
 {
   static bool led_is_on = false;
 
@@ -21,7 +21,7 @@ void heartbeat_blink_led(void)
 
 
 //--------------------------------------------------------------------------------------------------
-void service_task(void *pvParameters)
+static void service_task(void *pvParameters)
 {
   const TickType_t  x_service_task_cycle_ms = SERVICE_TASK_CYCLE;
   TickType_t        x_last_wake_time          = xTaskGetTickCount();
@@ -70,13 +70,15 @@ int main(void)
                 (UBaseType_t) USER_INTERFACE_TASK_PRIORITY,
                 ( xTaskHandle * ) NULL);
 
+#if APPLICATION_USE_NETWORK
   // ****
-//  xTaskCreate(  network_communication_task,
-//                (const char *) "network_task",
-//                1024,
-//                NULL,
-//                (UBaseType_t) NETWORK_COMM_TASK_PRIORITY,
-//                ( xTaskHandle * ) NULL);
+  xTaskCreate(  network_communication_task,
+                (const char *) "network_task",
+                1024,
+                NULL,
+                (UBaseType_t) NETWORK_COMM_TASK_PRIORITY,
+                ( xTaskHandle * ) NULL);
+#endif
 
   // ****
   vTaskStartScheduler();

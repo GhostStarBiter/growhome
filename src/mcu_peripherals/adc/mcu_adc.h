@@ -39,7 +39,7 @@ uint16_t mcu_adc_get_raw_data_channel_temp_2(void);
 /// @brief
 /// @return
 //--------------------------------------------------------------------------------------------------
-uint16_t mcu_adc_get_raw_data_channel_water_tank(void);
+uint16_t mcu_adc_get_water_tank_level_percents(void);
 
 
 #endif  // MCU_ADC_H

@@ -1,7 +1,6 @@
 #ifndef SERVO_H
 #define SERVO_H
 
-#include "main/application_map.h"
 
 typedef struct{
   TIM_TypeDef*  timer;
@@ -19,13 +18,19 @@ void servo_init
 
 
 //--------------------------------------------------------------------------------------------------
-/// @brief
-/// @param
-/// @param
+/// @brief  Set desired angle of servo
+/// @param  Desired servo angle in degrees
 //--------------------------------------------------------------------------------------------------
 void servo_set_angle
 (
   uint8_t uw_set_angle      // set angle in range 0..180 deg
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  ms-called function to control servo angle position
+//--------------------------------------------------------------------------------------------------
+void servo_control(void);
+
 
 #endif // SERVO_H

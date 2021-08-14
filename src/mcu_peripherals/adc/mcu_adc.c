@@ -1,4 +1,32 @@
-#include "mcu_adc_priv.h"
+#include "stm32f10x_adc.h"
+
+#include "mcu_adc.h"
+
+#include "configuration/adc_config.h"
+
+
+typedef struct{
+    volatile uint16_t  u16_raw_data[ADC_CONVERSION_CHANNELS];
+} mcu_adc_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Configuration of DMA channel for ADC module
+//--------------------------------------------------------------------------------------------------
+static void mcu_adc_config_dma(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Configuration of ADC module
+//--------------------------------------------------------------------------------------------------
+static void mcu_adc_config(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Configuration of ADC conversion sequence
+//--------------------------------------------------------------------------------------------------
+static void mcu_adc_config_conversion_order(void);
+
 
 mcu_adc_t mcu_adc;
 
@@ -114,9 +142,9 @@ uint16_t mcu_adc_get_raw_data_channel_temp_2(void)
 
 
 //--------------------------------------------------------------------------------------------------
-uint16_t mcu_adc_get_raw_data_channel_water_tank(void)
+uint16_t mcu_adc_get_water_tank_level_percents(void)
 {
-  return mcu_adc.u16_raw_data[CHANNEL_WATER_TANK];
+  return (mcu_adc.u16_raw_data[CHANNEL_WATER_TANK] * 100 / ADC_MAX_OUTPUT_RAW_VALUE);
 }
 
 

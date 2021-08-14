@@ -1,4 +1,207 @@
-#include "sui_priv.h"
+#include <stdlib.h>
+#include <string.h>
+
+#include "FreeRTOS.h"
+#include "task.h"
+
+#include "main/types.h"
+#include "configuration/app_config.h"
+#include "configuration/task_config.h"
+#include "configuration/water_pump_config.h"
+
+#include "lcd216/lcd216.h"
+#include "encoder_input/encoder_input.h"
+
+#include "utils/utils.h"
+
+#include "schedule/schedule.h"
+#include "green_house_system/green_house.h"
+#include "water/water.h"
+
+#include "sui.h"
+
+#include "gpio/mcu_gpio.h"      // debug
+
+#define ASCII_CHARACTER_MIN_VALUE           32  // Space
+#define ASCII_CHARACTER_MAX_VALUE           126 // ~
+
+#define MAIN_SCREEN_ELEMENTS_NUMBER         8
+#define TEMPERATURE_SCREEN_ELEMENTS_NUMBER  5
+#define WATER_SCREEN_ELEMENTS_NUMBER        5
+#define LIGHT_SCREEN_ELEMENTS_NUMBER        7
+#define CONNECTION_SCREEN_ELEMENTS_NUMBER   4
+#define SET_TIME_SCREEN_ELEMENTS_NUMBER     5
+
+
+#define SUI_DISPLAY_BUFFER_SIZE             (LCD216_ROWS*LCD216_COLUMNS)
+
+typedef enum {
+  CURRENT_TIME_HOURS          = 1,
+  CURRENT_TIME_MINS           = 3,
+  LIGHT_STATUS                = 5,
+  LIGHT_SCREEN_TEXT           = 6,
+  TIME_HOUR_SET_LIGHT_ON      = 7,
+  TIME_MINUTE_SET_LIGHT_ON    = 8,
+  LIGHT_DURATION_TEXT         = 9,
+  LIGHT_DURATION_HOURS        = 10,
+  CURRENT_AIR_TEMP            = 11,
+  AIR_HEATER                  = 13,
+  AIR_OUTLET                  = 15,
+  WATER_POWER                 = 17,
+  WATER_LEVEL                 = 19,
+  WATER_T_ON_TIME             = 21,
+  WATER_CYCLE                 = 23,
+  ONLINE_LINK_STATUS          = 25,
+  CONNECT_WIFI_AP              = 27
+} ctrl_item_id_t;
+
+typedef enum {
+  DISPLAY_ITEM_NUMERIC,
+  DISPLAY_ITEM_TEXTUAL
+} item_type_t;
+
+
+typedef struct {
+    uint8_t x;
+    uint8_t y;
+} on_screen_position_t;
+
+
+typedef struct {
+    ctrl_item_id_t        id;
+    item_type_t           type;
+    bool                  activated;                        // true/false - is item value is to be set
+    char*                 p_text;                           // char or text representative of display item
+    on_screen_position_t  text_position;                    // coordinates of item (char or string) on display
+    uint16_t              data;                             // item data (optional) to display/set
+    uint16_t              (*update_data)(ctrl_item_id_t);   // function pointer to update screen item data;
+    void                  (*action)(int16_t);                // execute function when item activated by pressing encoder button
+} screen_item_t;
+
+
+typedef struct screen{
+    struct screen*  prev;
+    struct screen*  next;
+    screen_item_t** item;
+    uint8_t         items_cnt;
+} display_screen_t;
+
+
+typedef struct {
+    mcu_time_t  set_time;             //@todo maybe (char) and convert to numbers?
+    uint8_t     ip_address[4];        // [0..255] [0..225] [0..225] [0..225]
+} user_settings_t;
+
+
+// structure controlled by encoder input which is interrupt-processed
+typedef struct {
+    // *** INTERNAL VARIABLES
+    volatile char     display_buffer[SUI_DISPLAY_BUFFER_SIZE + 1];
+    uint8_t           active_item_index;
+
+    // *** OBJECTS
+    display_screen_t* active_display;
+    user_settings_t   settings;
+} system_user_interface_t;
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Initializes configured interface for user interaction with system
+///           - LCD 216
+///           - TFT (to be implemented)
+//--------------------------------------------------------------------------------------------------
+void system_user_interface_init(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Function initializes user menu screens
+//--------------------------------------------------------------------------------------------------
+static void sui_init_user_menu(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief
+//--------------------------------------------------------------------------------------------------
+static void system_user_update_display(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief
+//--------------------------------------------------------------------------------------------------
+static void system_user_interface_update(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief
+//--------------------------------------------------------------------------------------------------
+static void system_user_interface_set_active_display
+(
+    display_screen_t* p_set_screen
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Initialize display menu main screen
+//--------------------------------------------------------------------------------------------------
+static void sui_main_screen_init(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Initialize display menu temperature screen
+//--------------------------------------------------------------------------------------------------
+static void sui_temperature_screen_init(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Initialize display menu water screen
+//--------------------------------------------------------------------------------------------------
+static void sui_water_screen_init(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Initialize display menu light screen
+//--------------------------------------------------------------------------------------------------
+static void sui_light_screen_init(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Initialize display menu connection screen
+//--------------------------------------------------------------------------------------------------
+static void sui_connection_screen_init(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Initialize display menu set time screen
+//--------------------------------------------------------------------------------------------------
+static void sui_set_time_screen_init(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Set active previous dispaly screen
+//--------------------------------------------------------------------------------------------------
+static void sui_go_to_prev_screen
+(
+    int16_t dummy
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Set active previous dispaly screen
+//--------------------------------------------------------------------------------------------------
+static void sui_go_to_next_screen
+(
+    int16_t dummy
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Generic action-function for menu items
+/// @param  Relative encoder ticks
+//--------------------------------------------------------------------------------------------------
+void sui_item_action
+(
+    int16_t encoder_ticks
+);
 
 #define LIGHT_ON_TEXT                       "LT:ON"
 #define LIGHT_OFF_TEXT                      "LT:OFF"
@@ -204,8 +407,6 @@ static void system_user_interface_update(void)
   int8_t          delta_ticks = 0;
 
   index = sui.active_item_index;
-
-
 
   // *** Check Encoder rotation
   current_ticks = encoder_get_ticks();
@@ -447,7 +648,7 @@ void sui_item_action(int16_t encoder_ticks)
         main_screen_light.p_text  = LIGHT_ON_TEXT;
       }
       encoder_deactivate_button();
-    break;
+      break;
 
     case TIME_HOUR_SET_LIGHT_ON:
       sui.active_display->item[index]->activated = true;
@@ -459,7 +660,7 @@ void sui_item_action(int16_t encoder_ticks)
       schedule_set_light_t_on_hour(light_t_on_hour.data);
       growbox_set_light(DISABLE);
       schedule_light_update_expected_endtime();
-    break;
+      break;
 
     case TIME_MINUTE_SET_LIGHT_ON:
       sui.active_display->item[index]->activated = true;
@@ -471,7 +672,7 @@ void sui_item_action(int16_t encoder_ticks)
       schedule_set_light_t_on_min(light_t_on_min.data);
       growbox_set_light(DISABLE);
       schedule_light_update_expected_endtime();
-    break;
+      break;
 
     case LIGHT_DURATION_HOURS:
       sui.active_display->item[index]->activated = true;
@@ -483,7 +684,7 @@ void sui_item_action(int16_t encoder_ticks)
       schedule_set_light_duration_hours(light_duration_hours.data);
       growbox_set_light(DISABLE);
       schedule_light_update_expected_endtime();
-    break;
+      break;
 
     case CURRENT_AIR_TEMP:
       sui.active_display->item[index]->activated = true;
@@ -496,15 +697,15 @@ void sui_item_action(int16_t encoder_ticks)
         main_screen_temperature.data = temperature.data;
       }
       growbox_set_temperature(temperature.data);
-    break;
+      break;
 
     case AIR_HEATER:
 
-    break;
+      break;
 
     case AIR_OUTLET:
 
-    break;
+      break;
 
     case WATER_POWER:
       sui.active_display->item[index]->activated = true;
@@ -516,7 +717,7 @@ void sui_item_action(int16_t encoder_ticks)
       }
       water_pump_power.data = ul_tmp;
       water_set_pump_power(ul_tmp);
-    break;
+      break;
 
     case WATER_T_ON_TIME:
       // set water pump active time in seconds (up to 90)
@@ -534,7 +735,7 @@ void sui_item_action(int16_t encoder_ticks)
 
       water_t_on.data = ul_tmp;
       schedule_set_water_duration_sec(ul_tmp);
-    break;
+      break;
 
     case WATER_CYCLE:
       // set water cycle in minutes (up to 90)
@@ -551,17 +752,18 @@ void sui_item_action(int16_t encoder_ticks)
       }
       water_t_cycle.data = ul_tmp;
       schedule_set_water_interval_mins(ul_tmp);
-    break;
+      break;
 
     case ONLINE_LINK_STATUS:
 
-    break;
+      break;
 
-    case SELECT_WIFI_AP:
+    case CONNECT_WIFI_AP:
 
-    break;
 
-    case WATER_LEVEL:
+
+      break;
+
     default:
 
     break;
@@ -575,7 +777,6 @@ void sui_item_action(int16_t encoder_ticks)
 static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
 {
   uint16_t    updated_data = 0;
-  //uint8_t     tmp = 0;
 
   switch(item_id)
   {
@@ -651,8 +852,9 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
       online_connection_status.p_text = "STS:OFL";
     break;
 
-    case SELECT_WIFI_AP:
-
+    case CONNECT_WIFI_AP:
+      // if static IP obtained - device connected to Wi-Fi
+      //  change text "Select AP" to name of Wi-Fi network connected to
     break;
 
     default:
@@ -933,9 +1135,9 @@ static void sui_connection_screen_init(void)
   online_connection_status.action           = sui_item_action;
   online_connection_status.activated        = false;
 
-  select_wi_fi_ap.id                        = SELECT_WIFI_AP;
+  select_wi_fi_ap.id                        = CONNECT_WIFI_AP;
   select_wi_fi_ap.type                      = DISPLAY_ITEM_TEXTUAL;
-  select_wi_fi_ap.p_text                    = "SELECT AP";
+  select_wi_fi_ap.p_text                    = "CONNECT WIFI";
   select_wi_fi_ap.text_position.x           = 0;
   select_wi_fi_ap.text_position.y           = LCD216_SECOND_ROW;
   select_wi_fi_ap.update_data               = NULL;

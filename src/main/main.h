@@ -11,7 +11,8 @@
 
 // ***
 #include "types.h"
-#include "application_map.h"
+#include "configuration/app_config.h"
+#include "configuration/task_config.h"
 
 // ***
 #include "mcu_peripherals.h"

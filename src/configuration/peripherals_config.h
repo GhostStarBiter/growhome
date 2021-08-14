@@ -1,66 +1,5 @@
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//  GPIO pins assignment
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#ifndef APPLICATION_MAP_H
-#define APPLICATION_MAP_H
-
-#include "stm32f10x.h"
-#include "system_config/stm32f10x_conf.h"
-
-//  If set to 1
-//  don't remap SWD pins for LCD216 usage
-#define APPLICATION_DEBUG                   1
-
-
-//  APPLICATION
-#define APPLICATION_NAME                    "GROWHOME"
-#define APPLICATION_NAME_POS_X              4
-#define APPLICATION_NAME_POS_Y              0
-
-#define APPLICATION_VERSION                 "v00.01"
-#define APPLICATION_VERSION_POS_X           10
-#define APPLICATION_VERSION_POS_Y           1
-
-
-// ***
-// Task priorities
-#define SERVICE_TASK_PRIORITY               1
-#define NETWORK_COMM_TASK_PRIORITY          2
-#define USER_INTERFACE_TASK_PRIORITY        3
-#define GROWBOX_TASK_PRIORITY               4
-
-// ***
-// Task call intervals
-#define INTERFACE_TASK_TIMEOUT              10      // [ticks] == ms
-#define SERVICE_TASK_TIMEOUT                1000    // [ticks] == ms
-#define GROWBOX_TASK_TIMEOUT                1       // [tick] == ms
-
-
-#define GROWBOX_MANUAL_MODE_TIMEOUT         20*1000 // 20 seconds (with respect to GROWBOX TASK CYCLE)
-#define AIR_HEATER_CYCLE_TIME               5000    // 5 seconds
-#define AIR_HEATER_MIN_DUTY                 2000
-
-#define GROWBOX_DEFAULT_TEMPERATURE         23
-#define AIR_REGULATION_TOLERANCE_DEGREES    1
-#define AIR_TEMP_PI_CTRL_KP                 30
-#define AIR_TEMP_PI_CTRL_KI                 0.001
-
-#define GROWBOX_AIR_MIX_CYCLE_TIMEOUT       5*60*1000 // [ms]
-#define GROWBOX_AIR_MIX_ACTIVE_TIMEOUT      3*60*1000 // [ms]
-
-#define GROWBOX_MAX_LIGHT_ON_HOURS          14
-
-// ***
-// ADC measurement
-#define MEASUREMENTS_BUFFER_SIZE            8
-#define WATER_TANK_LEVEL_MEAS_BUFF_SIZE     16
-
-#define APPLICATION_USE_LM60_TEMP           1
-#define APPLICATION_USE_AM2301_TEMP         (!(APPLICATION_USE_LM60_TEMP))
-
-#define ADC_MAX_INPUT_VOLTAGE               3300  // mV
-#define ADC_MAX_OUTPUT_RAW_VALUE            4096  // n/a
-
+#ifndef PERIPHERALS_CONFIG_H
+#define PERIPHERALS_CONFIG_H
 
 //          Servo motor
 #define SERVO_GPIO_PORT                     GPIOA
@@ -70,61 +9,30 @@
 #define SERVO_TIMER_PRESCALER               (36 - 1)                                // 1MHz = 1us tick
 #define SERVO_TIMER_PERIOD                  20000                                   // 20 ms
 
-#define SERVO_AIR_OUTLET_CLOSED             0
-#define SERVO_AIR_EXCHANGE_ANGLE            90
-#define SERVO_AIR_OUTLET_ANGLE              135
 
-// ****
-#define SIM800_RESET                        GPIO_Pin_1
-
-//------------------------------------------------
 //          ANALOG measurement
 #define ANALOG_MEASURE_PORT                 GPIOA
 
-#define ADC_CONVERSION_CHANNELS             3
-
-
-#define OPAMP_AMPLIFICATION_RATIO           3
-#define LM60_ZERO_DEGREES_OFFSET_CONVERTED  (424 * OPAMP_AMPLIFICATION_RATIO)
-#define LM60_TEMP_SENSOR_OPAMP_MV_PER_DEG   19    // 1000 mv [sensor@100C] * 3 [opamp ratio]/ 100 C
-#define RAW_ADC_TO_MV(raw)                  (float) ((raw)*ADC_MAX_INPUT_VOLTAGE/ADC_MAX_OUTPUT_RAW_VALUE)
-
 // Air temperature 1 measurement pin
 #define INCOME_AIR_TEMP_PIN                 GPIO_Pin_2
-#define ANALOG_TEMP_1_CHANNEL               ADC_Channel_2
-#define TEMP_1_CONVERSION_ORDER             1
-#define CHANNEL_TEMP_1                      (TEMP_1_CONVERSION_ORDER - 1)
 
 // Air temperature 2 measurement pin
 #define OUTLET_AIR_TEMP_PIN                 GPIO_Pin_3
-#define ANALOG_TEMP_2_CHANNEL               ADC_Channel_3
-#define TEMP_2_CONVERSION_ORDER             2
-#define CHANNEL_TEMP_2                      (TEMP_2_CONVERSION_ORDER - 1)
-
-
 
 // Water tank 1 level measurement pin
 #define WATER_TANK_LEVEL_MEASURE_PIN        GPIO_Pin_4
-#define WATER_TANK_LEVEL_CHANNEL            ADC_Channel_4
-#define WATER_TANK_LEVEL_CONVERSION_ORDER   3
-#define CHANNEL_WATER_TANK                  (WATER_TANK_LEVEL_CONVERSION_ORDER - 1)
 
-#define WATER_PUMP_DEFAULT_POWER            40  // [%]
-#define WATER_TANK_MINIMAL_LEVEL            10  // [%]
-#define WATER_T_ON_SEC_DEFAULT              15  // [sec]
-#define WATER_T_ON_SEC_MAX                  59  // [sec]
-#define WATER_INTERVAL_MINS_DEFAULT         5   // [mins]
-#define WATER_INTERVAL_MINS_MAX             90  // [mins]
 
 // ESP wifi module RST pin
 #define ESP_RST_PORT                        GPIOA
 #define ESP_RST_PIN                         GPIO_Pin_5
 
+
+
 // PWM water pump (AF TIM3 CH1)
 #define PWM_CONTROL_PORT                    GPIOA
 #define PWM_WATER_PUMP_PIN                  GPIO_Pin_6
 #define WATER_PUMP_CTRL_CHANNEL_FLAG        TIM_FLAG_CC1
-#define WATER_PUMP_INITIAL_POWER            50                                          // [%]
 
 //  PWM Air Input Green House (AF TIM3_CH2)
 #define PWM_AIR_INPUT_PIN                   GPIO_Pin_7
@@ -134,17 +42,16 @@
 #define PWM_CONTROL_TIMER_PERIOD            1000
 #define PWM_CONTROL_IRQHandler              TIM3_IRQHandler
 
-typedef enum {
-  WATER_PUMP  = 1,
-  AIR_INPUT   = 2
-} PWM_Channel_t;
-
 // Triac control
 #define TRIAC_GPIO_PORT                     GPIOA
 #define TRIAC_AIR_HEATER_PIN                GPIO_Pin_8
 
+
 //  SIM800 UART
 #define SIM800_PORT                         GPIOA
+
+#define SIM800_RESET                        GPIO_Pin_1
+
 #define SIM800_UART_TX_PIN                  GPIO_Pin_9
 #define SIM800_UART_RX_PIN                  GPIO_Pin_10
 #define SIM800_UART_INTERFACE               USART1
@@ -153,6 +60,8 @@ typedef enum {
 #define LIGHT_CTRL_PORT                     GPIOA
 #define LIGHT_CTRL_PIN                      GPIO_Pin_11
 
+
+//        LCD 2x16
 // LCD216 D4 - Data 4 pin
 #define LCD216_D4_PORT                      GPIOA
 #define LCD216_D4_PIN                       GPIO_Pin_12
@@ -170,9 +79,6 @@ typedef enum {
 #define LCD216_D7_PIN                       GPIO_Pin_15
 
 
-
-//------------------------------------------------------------------------------
-//                              PORT B
 // Air Income ventilator control status
 #define MIX_AIR_PORT                        GPIOB
 #define MIX_AIR_PIN                         GPIO_Pin_0
@@ -230,7 +136,6 @@ typedef enum {
 #define ESP_UART_INTERFACE                  USART3
 #define ESP_UART_DMA_TX_CHANNEL             DMA1_Channel2
 #define ESP_UART_DMA_TX_COMPLETE            DMA1_FLAG_TC2
-#define ESP8266_UART_BAUDRATE               115200
 
 // Debug pin
 #define DEBUG_PORT                          GPIOB
@@ -243,12 +148,8 @@ typedef enum {
 #define SD_CARD_SPI_MISO_PIN                GPIO_Pin_14
 #define SD_CARD_SPI_MOSI_PIN                GPIO_Pin_15
 
-//------------------------------------------------------------------------------
-//                              PORT C
 
-#define ENCODER_POS_MAX_TICKS               512                 // 1024 ticks - full range of output value
-#define ENCODER_NEG_MAX_TICKS               (-512)
-
+// Encoder with push-button
 #define ENCODER_PORT                        GPIOC
 #define ENCODER_BUTTON_PORT                 ENCODER_PORT
 #define ENCODER_BUTTON_PIN                  GPIO_Pin_13
@@ -268,8 +169,4 @@ typedef enum {
 #define ENCODER_EXTI_IRQn                   EXTI15_10_IRQn
 #define ENCODER_INPUT_IRQHandler            EXTI15_10_IRQHandler
 
-
-
-#endif // APPLICATION_MAP_H
-
-//  *** END OF FILE ***
+#endif // PERIPHERALS_CONFIG_H

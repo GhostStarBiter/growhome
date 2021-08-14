@@ -1,4 +1,19 @@
-#include "encoder_input_priv.h"
+#include "stm32f10x.h"
+#include "configuration/peripherals_config.h"
+
+#include "encoder_input.h"
+
+#define ENCODER_POS_MAX_TICKS               512                 // 1024 ticks - full range of output value
+#define ENCODER_NEG_MAX_TICKS               (-512)
+
+#define ENCODER_BUTTON_PRESSED              GPIO_ReadInputDataBit(ENCODER_BUTTON_PORT, ENCODER_BUTTON_PIN)
+#define ENCODER_A_HIGH                      GPIO_ReadInputDataBit(ENCODER_A_PORT, ENCODER_A_PIN)
+#define ENCODER_B_HIGH                      GPIO_ReadInputDataBit(ENCODER_B_PORT, ENCODER_B_PIN)
+
+typedef struct{
+  bool      button_activated;
+  int16_t   ticks;
+} encoder_input_t;
 
 volatile encoder_input_t encoder;
 

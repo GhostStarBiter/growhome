@@ -1,4 +1,54 @@
-#include "schedule_priv.h"
+#include "configuration/app_config.h"
+
+#include "rtc/mcu_rtc.h"
+#include "schedule.h"
+
+
+#define DAY_DEFAULT_LIGHT_DURATION          GROWBOX_MAX_LIGHT_ON_HOURS*SECONDS_IN_HOUR
+
+typedef struct{
+    activity_schedule_t light;
+    activity_schedule_t water;
+} day_plan_t;
+
+typedef struct{
+  mcu_time_t  current_time;
+  weekday_t   current_day;
+  day_plan_t  day[DAYS_IN_WEEK];
+} schedule_t;
+
+
+//------------------------------------------------------------------------------
+/// @brief  Init week schedule with default values
+//------------------------------------------------------------------------------
+static void schedule_init_week(void);
+
+
+//------------------------------------------------------------------------------
+/// @brief  Init week schedule with default values
+//------------------------------------------------------------------------------
+static void schedule_switch_date(void);
+
+
+//------------------------------------------------------------------------------
+/// @brief  Check schedule of light
+//------------------------------------------------------------------------------
+static void check_light_schedule(
+    weekday_t       current_day,
+    mcu_time_t      current_time,
+    FunctionalState *greenhouse_light_state
+);
+
+
+//------------------------------------------------------------------------------
+/// @brief  Check schedule of water
+//------------------------------------------------------------------------------
+static void check_water_schedule(
+    weekday_t       current_day,
+    mcu_time_t      current_time,
+    FunctionalState *greenhouse_water_pump_state
+);
+
 
 volatile schedule_t schedule;
 
