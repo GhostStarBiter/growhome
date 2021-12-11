@@ -17,15 +17,17 @@
 #define APPLICATION_NAME_POS_X              4
 #define APPLICATION_NAME_POS_Y              0
 
-#define APPLICATION_USE_NETWORK             1
+#define APPLICATION_USE_NETWORK             0
 
 #if APPLICATION_USE_NETWORK
   #define APPLICATION_VERSION                 "v00.02"
+  #define WIFI_NAME_LEN_MAX                   16
+  #define WIFI_PSWD_LEN_MAX                   16
 #else
   #define APPLICATION_VERSION                 "v00.01"
 #endif
 
-#define APPLICATION_VERSION_POS_X           10
+#define APPLICATION_VERSION_POS_X           5
 #define APPLICATION_VERSION_POS_Y           1
 
 
