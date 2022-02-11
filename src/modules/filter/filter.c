@@ -45,6 +45,6 @@ static void mean_filter_calculate(filter_object_t* p_filter)
   {
     tmp += p_filter->measurement_buffer[i];
   }
-  p_filter->filtered = tmp / p_filter->window_size;
+  p_filter->filtered = ((double) tmp / (double) p_filter->window_size);
 }
 
