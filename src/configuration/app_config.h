@@ -9,7 +9,7 @@
 
 //  If set to 1
 //  don't remap SWD pins for LCD216 usage
-#define DEBUG_MODE                          0
+#define DEBUG_MODE                          1
 
 
 //  APPLICATION
@@ -37,14 +37,15 @@
 #define WATER_INTERVAL_MINS_DEFAULT         3   // [mins]
 #define WATER_INTERVAL_MINS_MAX             90  // [mins]
 
-#define APPLICATION_USE_ONEWIRE_SENSOR      false
+#define APPLICATION_USE_ONEWIRE_SENSOR      0
 
+#define APPLICATION_USE_TWO_LM60_TEMP_SENS  0
 
 #define GROWBOX_MANUAL_MODE_TIMEOUT         20*1000 // [ms] 20 seconds (with respect to GROWBOX TASK CYCLE)
 #define AIR_HEATER_CYCLE_TIME               5000    // [ms]
 
-#define GROWBOX_DEFAULT_TEMPERATURE         28
-#define AIR_REGULATION_TOLERANCE_DEGREES    1
+#define GROWBOX_DEFAULT_TEMPERATURE         26
+#define AIR_REGULATION_TOLERANCE_DEGREES    0.5
 #define AIR_TEMP_PI_CTRL_KP                 10
 #define AIR_TEMP_PI_CTRL_KI                 0.001
 
