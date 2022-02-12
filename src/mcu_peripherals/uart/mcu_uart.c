@@ -23,8 +23,8 @@ void mcu_uart_init(void)
   USART_Init(ESP_UART_INTERFACE, &sUART_Init);
 
   //        DMA Transmit channel configuration
-  //  NOTE: BufferSize is not defined at this moment
-  //  NOTE: MemoryBaseAddress is not defined at this moment
+  //  NOTE: BufferSize is not defined at this moment. Set BufferSize before sending with DMA ! <--
+  //  NOTE: MemoryBaseAddress is not defined at this moment.
   sDMA_Tx_Init.DMA_DIR                = DMA_DIR_PeripheralDST;
 
   sDMA_Tx_Init.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;
@@ -59,16 +59,29 @@ void mcu_uart_dma_stop(void)
 
 
 //--------------------------------------------------------------------------------------------------
-void  mcu_uart_dma_start_transmit(uint16_t transmission_size)
+void mcu_uart_dma_start_transmit(USART_TypeDef* uart_interface, uint32_t dma_buffer_address, uint16_t transmission_size)
 {
-  while(!mcu_uart_is_transmission_complete())
+  // check for null pointer, zero transmission size
+  while(!dma_buffer_address);
+  while(!transmission_size);
+
+  if(uart_interface == ESP_UART_INTERFACE)
   {
-    vTaskDelay(1);
     // wait till current transmission in progress
+    while(!DMA_GetFlagStatus(ESP_UART_DMA_TX_COMPLETE))
+    {
+      vTaskDelay(1);
+    }
+    DMA_Cmd(ESP_UART_DMA_TX_CHANNEL,  DISABLE);
+    ESP_UART_DMA_TX_CHANNEL->CMAR   = dma_buffer_address;
+    ESP_UART_DMA_TX_CHANNEL->CNDTR  = (uint32_t) transmission_size;
+    DMA_Cmd(ESP_UART_DMA_TX_CHANNEL,  ENABLE);
   }
-  DMA_Cmd(ESP_UART_DMA_TX_CHANNEL, DISABLE);
-  ESP_UART_DMA_TX_CHANNEL->CNDTR = (uint32_t) transmission_size;
-  DMA_Cmd(ESP_UART_DMA_TX_CHANNEL, ENABLE);
+  else
+  {
+    // nothing implemented
+    // Add DMA transmit of another interface here
+  }
 }
 
 
@@ -77,13 +90,4 @@ void mcu_uart_set_dma_buffer_address(uint32_t dma_buffer_address)
 {
   ESP_UART_DMA_TX_CHANNEL->CMAR = dma_buffer_address;
 }
-
-
-//--------------------------------------------------------------------------------------------------
-FlagStatus mcu_uart_is_transmission_complete(void)
-{
-  return DMA_GetFlagStatus(ESP_UART_DMA_TX_COMPLETE);
-}
-
-
 

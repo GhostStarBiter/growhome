@@ -10,15 +10,6 @@ void mcu_uart_init(void);
 
 
 //------------------------------------------------------------------------------
-/// @brief
-/// @param
-//------------------------------------------------------------------------------
-void  mcu_uart_dma_start_transmit
-(
-  uint16_t ub_buffer_size
-);
-
-//------------------------------------------------------------------------------
 void mcu_uart_dma_stop(void);
 
 
@@ -26,9 +17,11 @@ void mcu_uart_dma_stop(void);
 /// @brief
 /// @param
 //------------------------------------------------------------------------------
-void mcu_uart_set_dma_buffer_address
+void  mcu_uart_dma_start_transmit
 (
-  uint32_t ul_buffer_address
+  USART_TypeDef* uart_interface,
+  uint32_t dma_buffer_address,
+  uint16_t transmission_size
 );
 
 
