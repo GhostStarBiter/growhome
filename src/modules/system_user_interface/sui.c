@@ -17,21 +17,27 @@
 #include "schedule/schedule.h"
 #include "green_house_system/green_house.h"
 #include "water/water.h"
+#include "network/network.h"
 
 #include "sui.h"
 
 #include "gpio/mcu_gpio.h"      // debug
 
-#define ASCII_CHARACTER_MIN_VALUE           32  // Space
-#define ASCII_CHARACTER_MAX_VALUE           126 // ~
+
 
 #define MAIN_SCREEN_ELEMENTS_NUMBER         8
 #define TEMPERATURE_SCREEN_ELEMENTS_NUMBER  5
 #define WATER_SCREEN_ELEMENTS_NUMBER        5
 #define LIGHT_SCREEN_ELEMENTS_NUMBER        7
-#define CONNECTION_SCREEN_ELEMENTS_NUMBER   4
-#define SET_TIME_SCREEN_ELEMENTS_NUMBER     5
+#if APPLICATION_USE_NETWORK
+#define NETWORK_SCREEN_ELEMENTS_NUMBER      4
+#define AP_NAME_SCREEN_ELEMENTS_NUMBER      19
+#define AP_PSWD_SCREEN_ELEMENTS_NUMBER      19
 
+#define ASCII_CHARACTER_QUESTION_MARK       63  // ?
+#define SPACE_SYMBOL                        ' '  // Space
+#define TILDA_SYMBOL                        '~' //
+#endif
 
 #define SUI_DISPLAY_BUFFER_SIZE             (LCD216_ROWS*LCD216_COLUMNS)
 
@@ -51,9 +57,59 @@ typedef enum {
   WATER_LEVEL                 = 19,
   WATER_T_ON_TIME             = 21,
   WATER_CYCLE                 = 23,
+#if APPLICATION_USE_NETWORK
   ONLINE_LINK_STATUS          = 25,
-  CONNECT_WIFI_AP              = 27
+  CONNECT_WIFI_AP             = 27,
+  // Wi-Fi Access Point name symbols are to be entered separately
+  AP_NAME_TEXT                = 29,
+  AP_NAME_SYMBOL_0            = 30,
+  AP_NAME_SYMBOL_1            = 31,
+  AP_NAME_SYMBOL_2            = 32,
+  AP_NAME_SYMBOL_3            = 33,
+  AP_NAME_SYMBOL_4            = 34,
+  AP_NAME_SYMBOL_5            = 35,
+  AP_NAME_SYMBOL_6            = 36,
+  AP_NAME_SYMBOL_7            = 37,
+  AP_NAME_SYMBOL_8            = 38,
+  AP_NAME_SYMBOL_9            = 39,
+  AP_NAME_SYMBOL_10           = 40,
+  AP_NAME_SYMBOL_11           = 41,
+  AP_NAME_SYMBOL_12           = 42,
+  AP_NAME_SYMBOL_13           = 43,
+  AP_NAME_SYMBOL_14           = 44,
+  AP_NAME_SYMBOL_15           = 45,
+
+  AP_NAME_ESCAPE               = 47,
+  AP_NAME_ENTERED             = 48,
+
+  PSWD_TEXT                   = 49,
+  PSWD_SYMBOL_0               = 50,
+  PSWD_SYMBOL_1               = 51,
+  PSWD_SYMBOL_2               = 52,
+  PSWD_SYMBOL_3               = 53,
+  PSWD_SYMBOL_4               = 54,
+  PSWD_SYMBOL_5               = 55,
+  PSWD_SYMBOL_6               = 56,
+  PSWD_SYMBOL_7               = 57,
+  PSWD_SYMBOL_8               = 58,
+  PSWD_SYMBOL_9               = 59,
+  PSWD_SYMBOL_10              = 60,
+  PSWD_SYMBOL_11              = 61,
+  PSWD_SYMBOL_12              = 62,
+  PSWD_SYMBOL_13              = 63,
+  PSWD_SYMBOL_14              = 64,
+  PSWD_SYMBOL_15              = 65,
+
+  PSWD_BREAK                  = 67,
+  PSWD_ENTERED                = 69,
+#else
+  WORD_GROW                   = 25,
+#endif
+
+
+
 } ctrl_item_id_t;
+
 
 typedef enum {
   DISPLAY_ITEM_NUMERIC,
@@ -90,11 +146,14 @@ typedef struct screen{
 // structure controlled by encoder input which is interrupt-processed
 typedef struct {
     // *** INTERNAL VARIABLES
-    volatile char     display_buffer[SUI_DISPLAY_BUFFER_SIZE + 1];
+    volatile char     display_buffer[SUI_DISPLAY_BUFFER_SIZE];
     uint8_t           active_item_index;
-
-    // *** OBJECTS
     display_screen_t* active_display;
+#if APPLICATION_USE_NETWORK
+    char              wifi_name[WIFI_NAME_LEN_MAX];
+    char              wifi_pswd[WIFI_PSWD_LEN_MAX];
+#endif
+    bool              wifi_enter_done;
 } system_user_interface_t;
 
 
@@ -157,20 +216,46 @@ static void sui_water_screen_init(void);
 static void sui_light_screen_init(void);
 
 
+#if APPLICATION_USE_NETWORK
 //--------------------------------------------------------------------------------------------------
 /// @brief  Initialize display menu connection screen
 //--------------------------------------------------------------------------------------------------
-static void sui_connection_screen_init(void);
+static void sui_network_screen_init(void);
 
 
 //--------------------------------------------------------------------------------------------------
-/// @brief  Initialize display menu set time screen
+/// @brief  Initialize Wi-Fi-connection procedure
 //--------------------------------------------------------------------------------------------------
-static void sui_set_time_screen_init(void);
+static void sui_ap_name_screen_init(void);
 
 
 //--------------------------------------------------------------------------------------------------
-/// @brief  Set active previous dispaly screen
+/// @brief  Initialize Wi-Fi-connection procedure
+/// @param  Pointer to Access Point name buffer
+//--------------------------------------------------------------------------------------------------
+static void sui_clear_user_credentials
+(
+    char* credential
+);
+//--------------------------------------------------------------------------------------------------
+///
+//--------------------------------------------------------------------------------------------------
+static void sui_ap_pswd_screen_init(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Function to check that character if in range [! ; ~]
+//--------------------------------------------------------------------------------------------------
+static void sui_check_character_range
+(
+    char* character
+);
+
+#endif
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Set active previous display screen
 //--------------------------------------------------------------------------------------------------
 static void sui_go_to_prev_screen
 (
@@ -179,7 +264,7 @@ static void sui_go_to_prev_screen
 
 
 //--------------------------------------------------------------------------------------------------
-/// @brief  Set active previous dispaly screen
+/// @brief  Set active previous display screen
 //--------------------------------------------------------------------------------------------------
 static void sui_go_to_next_screen
 (
@@ -195,6 +280,9 @@ void sui_item_action
 (
     int16_t encoder_ticks
 );
+
+
+
 
 #define LIGHT_ON_TEXT                       "LT:ON"
 #define LIGHT_OFF_TEXT                      "LT:OFF"
@@ -228,7 +316,11 @@ screen_item_t main_screen_temperature,
               water_level,
               time_hours,
               time_mins,
+#if APPLICATION_USE_NETWORK
               online_status;
+#else
+              word_grow;
+#endif
 
 screen_item_t* main_screen_items[MAIN_SCREEN_ELEMENTS_NUMBER];
 
@@ -258,30 +350,50 @@ screen_item_t light_text,
 
 screen_item_t* light_screen_items[LIGHT_SCREEN_ELEMENTS_NUMBER];
 
+
+//**************************************************************************************************
+//**************************************************************************************************
+#if APPLICATION_USE_NETWORK
 //------------------------------------------------------------------------------
-//  *** CONNECT TO IP SCREEN
+//  *** NETWORK SCREEN
 screen_item_t online_connection_status,
               select_wi_fi_ap;
 
-screen_item_t* connection_screen_items[CONNECTION_SCREEN_ELEMENTS_NUMBER];
+screen_item_t* network_screen_items[NETWORK_SCREEN_ELEMENTS_NUMBER];
+
 
 //------------------------------------------------------------------------------
-//  *** SET TIME SCREEN
-screen_item_t set_time_screen_text,
-              set_time_screen_hours,
-              set_time_screen_minutes;
+//  *** ENTER AP NAME SCREEN
+screen_item_t ap_name_text,
+              ap_name[WIFI_NAME_LEN_MAX],
+              ap_name_done,
+              ap_name_escape;
 
-screen_item_t* set_time_screen_items[SET_TIME_SCREEN_ELEMENTS_NUMBER];
+screen_item_t* ap_name_screen_items[AP_NAME_SCREEN_ELEMENTS_NUMBER];
+
+
+//------------------------------------------------------------------------------
+//  *** ENTER AP PASSWORD SCREEN
+
+screen_item_t ap_pswd_text,
+              ap_pswd[WIFI_PSWD_LEN_MAX],
+              ap_pswd_done,
+              ap_pswd_cancel;
+
+screen_item_t* ap_pswd_screen_items[AP_PSWD_SCREEN_ELEMENTS_NUMBER];
+#endif  // APPLICATION_USE_NETWORK
 
 
 // *** User menu displays
 display_screen_t  main_display,
+#if APPLICATION_USE_NETWORK
+                  network_display,
+                  ap_name_display,
+                  ap_pswd_display,
+#endif  // APPLICATION_USE_NETWORK
                   temperature_display,
                   water_display,
-                  light_display,
-                  connection_display,
-                  set_time_display;
-
+                  light_display;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -297,6 +409,11 @@ void system_user_interface_init(void)
   sui_init_user_menu();
 
   sui.active_item_index = 0;
+  sui.wifi_enter_done = false;
+#if APPLICATION_USE_NETWORK
+  memset(sui.wifi_name, '?', WIFI_NAME_LEN_MAX);
+  memset(sui.wifi_pswd, '?', WIFI_PSWD_LEN_MAX);
+#endif
 
   system_user_interface_set_active_display(&main_display);
 
@@ -448,7 +565,8 @@ static void system_user_interface_update(void)
   }
 
   // *** Check button status
-  if(encoder_button_activated())
+  if(encoder_button_activated()
+      && (sui.active_display->item[index]->action != NULL))
   {
     // Callback
     sui.active_display->item[index]->action(delta_ticks);
@@ -506,7 +624,8 @@ static void system_user_update_display(void)
     item_id = display->item[index]->id;
 
     // call update item's data function
-    if(display->item[index]->update_data != NULL && !display->item[index]->activated)
+    if( display->item[index]->update_data != NULL
+        && !display->item[index]->activated)
     {
       display->item[index]->data = display->item[index]->update_data(item_id);
     }
@@ -523,6 +642,7 @@ static void system_user_update_display(void)
       sui.display_buffer[buff_pos + n] = display->item[index]->p_text[n];
       n++;
     }
+
     // ***
     // CONVERT NUMBERS TO CHARACTERS
     if(display->item[index]->type == DISPLAY_ITEM_NUMERIC)
@@ -605,7 +725,6 @@ void sui_item_action(int16_t encoder_ticks)
       {
         time_hours.data = 0;
       }
-      set_time_screen_hours.data = time_hours.data;
 
       set_time = mcu_rtc_get_time();
       set_time.hour = time_hours.data;
@@ -620,7 +739,6 @@ void sui_item_action(int16_t encoder_ticks)
       {
         time_mins.data = 0;
       }
-      set_time_screen_minutes.data = time_mins.data;
 
       set_time = mcu_rtc_get_time();
       set_time.min = time_mins.data;
@@ -747,24 +865,323 @@ void sui_item_action(int16_t encoder_ticks)
       schedule_set_water_interval_mins(ul_tmp);
       break;
 
+#if APPLICATION_USE_NETWORK
     case ONLINE_LINK_STATUS:
 
       break;
 
+
     case CONNECT_WIFI_AP:
+      lcd216_clear();
+      sui.active_item_index = 0;
+      system_user_interface_set_active_display(&ap_name_display);
+      encoder_deactivate_button();
+      sui.active_display->item[index]->activated = false;
+      break;
 
+    case AP_NAME_SYMBOL_0:
+      sui.active_display->item[index]->activated = true;
 
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[0] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_1:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[1] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_2:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[2] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_3:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[3] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_4:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[4] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_5:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[5] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_6:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[6] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_7:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[7] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_8:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[8] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_9:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[9] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_10:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[10] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_11:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[11] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_12:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[12] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_13:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[13] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_14:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[14] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_SYMBOL_15:
+      sui.active_display->item[index]->activated = true;
+
+      ul_tmp = encoder_ticks + ASCII_CHARACTER_QUESTION_MARK;
+      sui_check_character_range((char*) &ul_tmp);
+      sui.active_display->item[index]->p_text = (char*) ul_tmp;
+      sui.wifi_name[15] = (char) ul_tmp;
+      break;
+
+    case AP_NAME_ENTERED:
+      sui_clear_user_credentials((char*) sui.wifi_name);
+      sui.active_item_index = 0;
+
+      system_user_interface_set_active_display(&ap_pswd_display);
+      encoder_deactivate_button();
+      sui.active_display->item[index]->activated = false;
+      break;
+
+    case AP_NAME_ESCAPE:
+      //  @todo:
+      //  renew Question mark symbols on AP Name display
+      sui.active_item_index = 0;
+      system_user_interface_set_active_display(&main_display);
+      encoder_deactivate_button();
+      break;
+
+    case PSWD_SYMBOL_0:
 
       break;
 
+    case PSWD_SYMBOL_1:
+
+      break;
+
+    case PSWD_SYMBOL_2:
+
+      break;
+
+    case PSWD_SYMBOL_3:
+
+      break;
+
+    case PSWD_SYMBOL_4:
+
+      break;
+
+    case PSWD_SYMBOL_5:
+
+      break;
+
+    case PSWD_SYMBOL_6:
+
+      break;
+
+    case PSWD_SYMBOL_7:
+
+      break;
+
+    case PSWD_SYMBOL_8:
+
+      break;
+
+    case PSWD_SYMBOL_9:
+
+      break;
+
+    case PSWD_SYMBOL_10:
+
+      break;
+
+    case PSWD_SYMBOL_11:
+
+      break;
+
+    case PSWD_SYMBOL_12:
+
+      break;
+
+    case PSWD_SYMBOL_13:
+
+      break;
+
+    case PSWD_SYMBOL_14:
+
+      break;
+
+
+    case PSWD_SYMBOL_15:
+
+      break;
+
+    case PSWD_ENTERED:
+      // @todo: cleanup wifi name buffer from "?"
+      sui_clear_user_credentials((char*) sui.wifi_pswd);
+      sui.active_item_index = 0;
+
+      system_user_interface_set_active_display(&main_display);
+      encoder_deactivate_button();
+
+      sui.wifi_enter_done = true;
+      break;
+
+    case PSWD_BREAK:
+
+      break;
+
+#endif
+
     default:
-
     break;
-
   }
 }
 
 
+#if APPLICATION_USE_NETWORK
+//--------------------------------------------------------------------------------------------------
+static void sui_check_character_range(char* character)
+{
+  if(*character < SPACE_SYMBOL)
+  {
+    *character = TILDA_SYMBOL;
+  }
+  else if(*character >= TILDA_SYMBOL)
+  {
+    *character = SPACE_SYMBOL;
+  }
+  else
+  {
+    // PASS
+    // In range of allowed symbols
+  }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+char const* sui_get_user_ssid(void)
+{
+  return (char const *) sui.wifi_name;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+char const * sui_get_user_pswd(void)
+{
+  return (char const *) sui.wifi_pswd;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+static void sui_clear_user_credentials(char* credential)
+{
+  for(uint8_t i = 0; i < SUI_DISPLAY_BUFFER_SIZE/2; i++)
+  {
+    if(credential[i] == '?')
+    {
+      credential[i] = '\0';
+    };
+  }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+bool sui_user_enter_credentials(void)
+{
+  return sui.wifi_enter_done;
+}
+
+#endif
 
 //--------------------------------------------------------------------------------------------------
 static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
@@ -829,7 +1246,7 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
     break;
 
     case WATER_LEVEL:
-      updated_data = growbox_get_water_level();
+      updated_data = (uint16_t) growbox_get_water_level();
     break;
 
     case WATER_T_ON_TIME:
@@ -840,7 +1257,9 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
       updated_data = (uint8_t) schedule_get_water_interval_mins();
     break;
 
+#if APPLICATION_USE_NETWORK
     case ONLINE_LINK_STATUS:
+      // @todo: request to network manager
       online_status.p_text = "OFL";
       online_connection_status.p_text = "STS:OFL";
     break;
@@ -849,6 +1268,7 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
       // if static IP obtained - device connected to Wi-Fi
       //  change text "Select AP" to name of Wi-Fi network connected to
     break;
+#endif
 
     default:
       // empty
@@ -870,9 +1290,11 @@ static void sui_init_user_menu(void)
 
   sui_light_screen_init();
 
-  sui_connection_screen_init();
-
-  sui_set_time_screen_init();
+#if APPLICATION_USE_NETWORK
+  sui_network_screen_init();
+  sui_ap_name_screen_init();
+  sui_ap_pswd_screen_init();
+#endif
 }
 
 
@@ -930,6 +1352,7 @@ static void sui_main_screen_init(void)
   time_mins.action                          = sui_item_action;
   time_mins.activated                       = false;
 
+#if APPLICATION_USE_NETWORK
   online_status.id                          = ONLINE_LINK_STATUS;
   online_status.type                        = DISPLAY_ITEM_TEXTUAL;
   online_status.p_text                      = NULL;
@@ -939,6 +1362,18 @@ static void sui_main_screen_init(void)
   online_status.data                        = sui_update_screen_item_data(online_status.id);
   online_status.action                      = sui_item_action;
   online_status.activated                   = false;
+#else
+  word_grow.id                              = WORD_GROW;
+  word_grow.type                            = DISPLAY_ITEM_TEXTUAL;
+  word_grow.p_text                          = "GRW";
+  word_grow.text_position.x                 = 13;
+  word_grow.text_position.y                 = LCD216_SECOND_ROW;
+  word_grow.update_data                     = NULL;
+  word_grow.data                            = 0;
+  word_grow.action                          = NULL;
+  word_grow.activated                       = false;
+
+#endif
 
   // Main screen items array init
   main_screen_items[0]                      = &main_screen_temperature;
@@ -946,15 +1381,23 @@ static void sui_main_screen_init(void)
   main_screen_items[2]                      = &water_level;
   main_screen_items[3]                      = &time_hours;
   main_screen_items[4]                      = &time_mins;
-  main_screen_items[5]                      = &online_status;
-  main_screen_items[6]                      = &go_to_prev_screen;
-  main_screen_items[7]                      = &go_to_next_screen;
+  main_screen_items[5]                      = &go_to_prev_screen;
+  main_screen_items[6]                      = &go_to_next_screen;
+#if APPLICATION_USE_NETWORK
+  main_screen_items[7]                      = &online_status;
+#else
+  main_screen_items[7]                      = &word_grow;
+#endif
 
   // Init main display object
   main_display.item       = main_screen_items;
   main_display.items_cnt  = MAIN_SCREEN_ELEMENTS_NUMBER;
   main_display.next       = &temperature_display;
-  main_display.prev       = &set_time_display;
+#if APPLICATION_USE_NETWORK
+  main_display.prev       = &network_display;
+#else
+  main_display.prev       = &light_display;
+#endif
 }
 
 
@@ -1110,13 +1553,18 @@ static void sui_light_screen_init(void)
 
   light_display.item      = light_screen_items;
   light_display.items_cnt = LIGHT_SCREEN_ELEMENTS_NUMBER;
-  light_display.next      = &connection_display;
+#if APPLICATION_USE_NETWORK
+  light_display.next      = &network_display;
+#else
+  light_display.next      = &main_display;
+#endif
   light_display.prev      = &water_display;
 }
 
 
+#if APPLICATION_USE_NETWORK
 //--------------------------------------------------------------------------------------------------
-static void sui_connection_screen_init(void)
+static void sui_network_screen_init(void)
 {
   online_connection_status.id               = ONLINE_LINK_STATUS;
   online_connection_status.type             = DISPLAY_ITEM_TEXTUAL;
@@ -1130,7 +1578,7 @@ static void sui_connection_screen_init(void)
 
   select_wi_fi_ap.id                        = CONNECT_WIFI_AP;
   select_wi_fi_ap.type                      = DISPLAY_ITEM_TEXTUAL;
-  select_wi_fi_ap.p_text                    = "CONNECT WIFI";
+  select_wi_fi_ap.p_text                    = "CONNECT AP";
   select_wi_fi_ap.text_position.x           = 0;
   select_wi_fi_ap.text_position.y           = LCD216_SECOND_ROW;
   select_wi_fi_ap.update_data               = NULL;
@@ -1138,60 +1586,114 @@ static void sui_connection_screen_init(void)
   select_wi_fi_ap.activated                 = false;
 
   // *** Connection display
-  connection_screen_items[0] = &online_connection_status;
-  connection_screen_items[1] = &select_wi_fi_ap;
-  connection_screen_items[2] = &go_to_prev_screen;
-  connection_screen_items[3] = &go_to_next_screen;
+  network_screen_items[0] = &online_connection_status;
+  network_screen_items[1] = &select_wi_fi_ap;
+  network_screen_items[2] = &go_to_prev_screen;
+  network_screen_items[3] = &go_to_next_screen;
 
-  connection_display.item       = connection_screen_items;
-  connection_display.items_cnt  = CONNECTION_SCREEN_ELEMENTS_NUMBER;
-  connection_display.next       = &set_time_display;
-  connection_display.prev       = &light_display;
+  network_display.item       = network_screen_items;
+  network_display.items_cnt  = NETWORK_SCREEN_ELEMENTS_NUMBER;
+  network_display.next       = &main_display;
+  network_display.prev       = &light_display;
 }
 
 
 //--------------------------------------------------------------------------------------------------
-static void sui_set_time_screen_init(void)
+static void sui_ap_name_screen_init(void)
 {
-  set_time_screen_text.p_text             = "HOUR MIN";
-  set_time_screen_text.type               = DISPLAY_ITEM_TEXTUAL;
-  set_time_screen_text.text_position.x    = 0;
-  set_time_screen_text.text_position.y    = LCD216_FIRST_ROW;
-  set_time_screen_text.update_data        = NULL;
-  set_time_screen_text.action             = NULL;
+  ap_name_text.id               = AP_NAME_TEXT;
+  ap_name_text.type             = DISPLAY_ITEM_TEXTUAL;
+  ap_name_text.p_text           = "WIFI:";
+  ap_name_text.text_position.x  = 0;
+  ap_name_text.text_position.y  = LCD216_FIRST_ROW;
+  ap_name_text.update_data      = sui_update_screen_item_data;
+  ap_name_text.data             = 0;
+  ap_name_text.action           = NULL;
+  ap_pswd_text.activated        = false;
 
-  set_time_screen_hours.id                = CURRENT_TIME_HOURS;
-  set_time_screen_hours.type              = DISPLAY_ITEM_NUMERIC;
-  set_time_screen_hours.p_text            = NULL;
-  set_time_screen_hours.text_position.x   = 2;
-  set_time_screen_hours.text_position.y   = LCD216_SECOND_ROW;
-  set_time_screen_hours.update_data       = sui_update_screen_item_data;
-  set_time_screen_hours.data              = sui_update_screen_item_data(set_time_screen_hours.id);
-  set_time_screen_hours.action            = sui_item_action;
-  set_time_screen_hours.activated         = false;
+  for(uint8_t i = 0; i < 16; i++)
+  {
+    ap_name[i].id               = AP_NAME_SYMBOL_0 + i;
+    ap_name[i].type             = DISPLAY_ITEM_TEXTUAL;
+    ap_name[i].p_text           = "?";
+    ap_name[i].text_position.x  = i;
+    ap_name[i].text_position.y  = LCD216_SECOND_ROW;
+    ap_name[i].update_data      = NULL;
+    ap_name[i].data             = 0;
+    ap_name[i].action           = sui_item_action;
+    ap_name[i].activated        = false;
+  }
 
-  set_time_screen_minutes.id              = CURRENT_TIME_MINS;
-  set_time_screen_minutes.type            = DISPLAY_ITEM_NUMERIC;
-  set_time_screen_minutes.p_text          = NULL;
-  set_time_screen_minutes.text_position.x = 5;
-  set_time_screen_minutes.text_position.y = LCD216_SECOND_ROW;
-  set_time_screen_minutes.update_data     = sui_update_screen_item_data;
-  set_time_screen_minutes.data            = sui_update_screen_item_data(set_time_screen_minutes.id);
-  set_time_screen_minutes.action          = sui_item_action;
-  set_time_screen_minutes.activated       = false;
+  ap_name_escape.id               = AP_NAME_ESCAPE;
+  ap_name_escape.type             = DISPLAY_ITEM_TEXTUAL;
+  ap_name_escape.p_text           = "ESC";
+  ap_name_escape.text_position.x  = 12;
+  ap_name_escape.text_position.y  = LCD216_FIRST_ROW;
+  ap_name_escape.update_data      = NULL;
+  ap_name_escape.data             = 0;
+  ap_name_escape.action           = sui_item_action;
+  ap_name_escape.activated        = false;
 
-  // *** Set time display
-  set_time_screen_items[0] = &set_time_screen_text;
-  set_time_screen_items[1] = &set_time_screen_hours;
-  set_time_screen_items[2] = &set_time_screen_minutes;
-  set_time_screen_items[3] = &go_to_prev_screen;
-  set_time_screen_items[4] = &go_to_next_screen;
+  ap_name_done.id                 = AP_NAME_ENTERED;
+  ap_name_done.type               = DISPLAY_ITEM_TEXTUAL;
+  ap_name_done.p_text             = "OK";
+  ap_name_done.text_position.x    = 9;
+  ap_name_done.text_position.y    = LCD216_FIRST_ROW;
+  ap_name_done.update_data        = NULL;
+  ap_name_done.data               = 0;
+  ap_name_done.action             = sui_item_action;
+  ap_name_done.activated          = false;
 
-  set_time_display.item       = set_time_screen_items;
-  set_time_display.items_cnt  = SET_TIME_SCREEN_ELEMENTS_NUMBER;
-  set_time_display.next       = &main_display;
-  set_time_display.prev       = &connection_display;
+  ap_name_screen_items[0] = &ap_name_text;
+
+  for(uint8_t i = 0; i < WIFI_NAME_LEN_MAX; i++)
+  {
+    ap_name_screen_items[i+1] = &ap_name[i];
+  }
+
+  ap_name_screen_items[17] = &ap_name_done;
+  ap_name_screen_items[18] = &ap_name_escape;
+
+  ap_name_display.item      = ap_name_screen_items;
+  ap_name_display.items_cnt = AP_NAME_SCREEN_ELEMENTS_NUMBER;
+  ap_name_display.next      = NULL;
+  ap_name_display.prev      = NULL;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+static void sui_ap_pswd_screen_init(void)
+{
+  ap_pswd_text.id               = PSWD_TEXT;
+  ap_pswd_text.type             = DISPLAY_ITEM_TEXTUAL;
+  ap_pswd_text.p_text           = "PSWD:";
+  ap_pswd_text.text_position.x  = 0;
+  ap_pswd_text.text_position.y  = LCD216_FIRST_ROW;
+  ap_pswd_text.update_data      = NULL;
+  ap_pswd_text.data             = 0;
+  ap_pswd_text.action           = NULL;
+  ap_pswd_text.activated        = false;
+
+  for(uint8_t i = 0; i < 16; i++)
+  {
+    ap_pswd[i].id               = PSWD_SYMBOL_0 + i;
+    ap_pswd[i].type             = DISPLAY_ITEM_TEXTUAL;
+    ap_pswd[i].p_text           = "?";
+    ap_pswd[i].text_position.x  = i;
+    ap_pswd[i].text_position.y  = LCD216_SECOND_ROW;
+  }
+
+  ap_pswd_done.id = PSWD_ENTERED;
+  ap_pswd_done.type = DISPLAY_ITEM_TEXTUAL;
+  ap_pswd_done.p_text = "CONNECT";
+
+
+  ap_pswd_cancel.id = PSWD_BREAK;
+  ap_pswd_cancel.type = DISPLAY_ITEM_TEXTUAL;
+  ap_pswd_cancel.p_text = "ESC";
+  ap_pswd_cancel.action = sui_item_action;
+}
+#endif
 
 
 //--------------------------------------------------------------------------------------------------

@@ -21,14 +21,6 @@ void network_communication_task(void* pvParameters);
 
 
 //--------------------------------------------------------------------------------------------------
-/// @brief  Getter of WiFi Access Point SSID name
-/// @return String of characters with name of Access Point connected to
-///         (NULL if not connected)
-//--------------------------------------------------------------------------------------------------
-char* network_get_ap_ssid(void);
-
-
-//--------------------------------------------------------------------------------------------------
 /// @brief  Getter of online status
 /// @return true - online/connected
 ///         false - ofline/disconnected

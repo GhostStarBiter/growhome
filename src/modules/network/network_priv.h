@@ -1,6 +1,7 @@
 #ifndef NETWORK_COMM_PRIV_H
 #define NETWORK_COMM_PRIV_H
 
+#include <string.h>
 #include "esp/esp.h"
 
 #include "network.h"
