@@ -38,7 +38,7 @@ void water_pump_set_status(FunctionalState set_state)
 {
   uint8_t tmp = 0;
 
-  if(set_state && (water.level > WATER_TANK_MINIMAL_LEVEL))
+  if(set_state)//&& (water.level > WATER_TANK_MINIMAL_LEVEL))
   {
     tmp = water.pump_power;
   }
