@@ -43,14 +43,14 @@ FunctionalState growbox_get_light_status(void);
 /// @brief    Getter of mixed air temperature
 /// @return   Mixed air temperature
 //--------------------------------------------------------------------------------------------------
-uint8_t growbox_get_mixed_air_temp(void);
+uint16_t growbox_get_mixed_air_temp(void);
 
 
 //--------------------------------------------------------------------------------------------------
 /// @brief    Getter of water tank level (in %)
 /// @return   Water tank level in %
 //--------------------------------------------------------------------------------------------------
-uint8_t growbox_get_water_level(void);
+double growbox_get_water_level(void);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -69,7 +69,7 @@ void growbox_set_control_mode
 //--------------------------------------------------------------------------------------------------
 void growbox_set_temperature
 (
-    uint8_t set_temperature
+    double set_temperature
 );
 
 //--------------------------------------------------------------------------------------------------
