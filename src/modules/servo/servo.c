@@ -36,7 +36,6 @@ void servo_init(servo_init_t* init_struct)
 void servo_set_angle(uint8_t angle_degrees)
 {
   servodrive.set_angle = angle_degrees;
-  servodrive.angle_delta = (float) servodrive.set_angle - servodrive.current_angle;
 }
 
 
