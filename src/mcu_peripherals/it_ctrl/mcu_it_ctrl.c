@@ -37,7 +37,7 @@ void mcu_irq_init(void)
 
   config_irq(ESP_UART_IRQn,         IRQ_GROUP_USUAL, 2);                            // esp8266 communication line
   config_irq(ESP_UART_DMA_IRQn,     IRQ_GROUP_USUAL, 2);                            // MCU transmit to esp8266
-  //config_irq(I2C1_EV_IRQn,        IRQ_GROUP_USUAL, 3);                            // i2c sensors
+  config_irq(I2C1_DMA_RX_IRQn,      IRQ_GROUP_USUAL, 3);                            // i2c sensors
   config_irq(ADC1_2_IRQn,         IRQ_GROUP_USUAL, 4);                              // analog signals measurement
   config_irq(TIM3_IRQn,           IRQ_GROUP_USUAL, 4);                              // pwm control
   config_irq(EXTI15_10_IRQn,      IRQ_GROUP_USUAL, 5);                              // encoder signals

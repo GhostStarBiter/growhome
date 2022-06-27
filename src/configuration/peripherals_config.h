@@ -117,6 +117,10 @@
 #define I2C1_SDA_PIN                        GPIO_Pin_7
 #define I2C1_SDA_PinSource                  GPIO_PinSource7
 
+#define I2C1_DMA_Channel                    DMA1_Channel7
+#define I2C1_DMA_RX_IRQn                    DMA1_Channel7_IRQn
+#define I2C1_DMA_RX_IRQHandler              DMA1_Channel7_IRQHandler
+
 #define SYSTEM_BUTTON_PORT                  GPIOB
 #define SYSTEM_BUTTON_PIN                   GPIO_Pin_8
 

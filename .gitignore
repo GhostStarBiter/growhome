@@ -5,3 +5,5 @@ src/.DS_Store
 src/mcu_peripherals/.DS_Store
 src/modules/.DS_Store
 Debug
+/.metadata/
+/Debug basic/
