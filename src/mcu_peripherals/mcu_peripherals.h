@@ -8,6 +8,7 @@
 #include "it_ctrl/mcu_it_ctrl.h"
 #include "uart/mcu_uart.h"
 #include "rtc/mcu_rtc.h"
+#include "i2c/mcu_i2c.h"
 
 
 //--------------------------------------------------------------------------------------------------

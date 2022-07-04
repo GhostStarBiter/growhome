@@ -10,7 +10,7 @@ void mcu_init_peripherals(void)
   mcu_uart_init();
   mcu_tim_init();
   mcu_rtc_init();
-  //mcu_i2c_init();
+  mcu_i2c_init();
 
   mcu_irq_init();
 }

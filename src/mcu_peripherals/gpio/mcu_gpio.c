@@ -87,7 +87,7 @@ static void gpio_init_analog(void)
 //--------------------------------------------------------------------------------------------------
 static void gpio_init_LCD216(void)
 {
-  if( !DEBUG_MODE )
+  if( APPLICATION_MODE )
   {
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
   }

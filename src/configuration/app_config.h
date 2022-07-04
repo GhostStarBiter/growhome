@@ -10,6 +10,7 @@
 //  If set to 1
 //  don't remap SWD pins for LCD216 usage
 #define DEBUG_MODE                          1
+#define APPLICATION_MODE                    (!DEBUG_MODE)
 
 
 //  APPLICATION

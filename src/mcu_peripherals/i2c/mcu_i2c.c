@@ -30,13 +30,13 @@ void mcu_i2c_init(void)
 
   I2C_Init(I2C1, &(I2C_ConfigStruct));
 
-  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)I2C1->DR;
+  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t) &I2C1->DR;
   //DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)I2C_Rx_Buffer; //variable to store data  ||| SET LATER
   DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
   DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
   DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
   DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
-  // DMA_InitStructure.DMA_BufferSize = 14;    //number of data to be transfered  ||| SET LATER
+  // DMA_InitStructure.DMA_BufferSize = 1;    //number of data to be transfered  ||| SET LATER
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
   DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
@@ -44,32 +44,36 @@ void mcu_i2c_init(void)
 
   DMA_Init(I2C1_DMA_Channel, &DMA_InitStructure);
   DMA_ITConfig(I2C1_DMA_Channel, DMA_IT_TC, ENABLE);
-  DMA_Cmd(I2C1_DMA_Channel, ENABLE);
 
   I2C_DMACmd(I2C1, ENABLE);
-
+  DMA_Cmd(I2C1_DMA_Channel, ENABLE);
   I2C_Cmd(I2C1, ENABLE);
-
 }
 
 
 //------------------------------------------------------------------------------
-uint32_t mcu_i2c_dma_read(i2c_slave_t* ptr)
+uint32_t mcu_i2c_transfer(i2c_slave_t* ptr)
 {
   if(mcu_i2c.busy)
   {
     return I2C_FLAG_BUSY;
   }
 
+  while(!ptr);
+
   mcu_i2c.busy = 1;
   mcu_i2c.slave = ptr;
 
-  DMA_Cmd(I2C1_DMA_Channel, DISABLE);
-  // set DMA channel receiving buffer address
-  I2C1_DMA_Channel->CMAR = (uint32_t) (ptr->buf);
-  // set size in bytes
-  I2C1_DMA_Channel->CNDTR = ptr->len;
-  DMA_Cmd(I2C1_DMA_Channel, ENABLE);
+  // Data length set to 0 if we want to send data to sensor without reading data back
+  if(mcu_i2c.slave->len != 0)
+  {
+    DMA_Cmd(I2C1_DMA_Channel, DISABLE);
+    // set DMA channel receiving buffer address
+    I2C1_DMA_Channel->CMAR = (uint32_t) (mcu_i2c.slave->buf);
+    // set size in bytes
+    I2C1_DMA_Channel->CNDTR = mcu_i2c.slave->len;
+    DMA_Cmd(I2C1_DMA_Channel, ENABLE);
+  }
 
   /* While the bus is busy */
   while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
@@ -81,7 +85,7 @@ uint32_t mcu_i2c_dma_read(i2c_slave_t* ptr)
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
 
   /* Send MPU6050 address for write */
-  I2C_Send7bitAddress(I2C1, ptr->addr, I2C_Direction_Transmitter);
+  I2C_Send7bitAddress(I2C1, (mcu_i2c.slave->addr << 1), I2C_Direction_Transmitter);
 
   /* Test on EV6 and clear it */
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
@@ -90,20 +94,24 @@ uint32_t mcu_i2c_dma_read(i2c_slave_t* ptr)
   I2C_Cmd(I2C1, ENABLE);
 
   /* Send the internal address (IC specific) */
-  I2C_SendData(I2C1, ptr->sub_addr);
+  I2C_SendData(I2C1, mcu_i2c.slave->sub_addr);
 
   /* Test on EV8 and clear it */
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
 
-  /* Send START condition a second time */
-  I2C_GenerateSTART(I2C1, ENABLE);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+  if(mcu_i2c.slave->len != 0)
+  {
+    /* Send START condition a second time */
+    I2C_GenerateSTART(I2C1, ENABLE);
+    while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
 
-  /* Enable DMA NACK automatic generation */
-  I2C_DMALastTransferCmd(I2C1, ENABLE);                    //Note this one, very important
+    /* Enable DMA NACK automatic generation */
+    I2C_DMALastTransferCmd(I2C1, ENABLE);                    //Note this one, very important
 
-  I2C_Send7bitAddress(I2C1, ptr->addr, I2C_Direction_Receiver);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED));
+    I2C_Send7bitAddress(I2C1, (mcu_i2c.slave->addr << 1), I2C_Direction_Receiver);
+
+    while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED));
+  }
 
   return 0;
 }
@@ -118,7 +126,6 @@ void DMA1_Channel7_IRQHandler(void)
     /* Clear transmission complete flag */
     DMA_ClearFlag(DMA1_FLAG_TC7);
 
-    I2C_DMACmd(I2C1, DISABLE);
     /* Send I2C1 STOP Condition */
     I2C_GenerateSTOP(I2C1, ENABLE);
     /* Disable DMA channel*/
@@ -126,7 +133,6 @@ void DMA1_Channel7_IRQHandler(void)
 
     mcu_i2c.busy = 0;
     mcu_i2c.slave->recvd_flag = 1;
-    mcu_i2c.slave = NULL;
 
     mcu_gpio_set_debug_pin(DISABLE);
   }
