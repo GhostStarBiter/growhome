@@ -21,6 +21,7 @@
 #include "water/water.h"
 #include "triac/triac.h"
 #include "servo/servo.h"
+#include "gy21/gy21.h"
 
 #if APPLICATION_USE_ONEWIRE_SENSOR
   #include "onewire/onewire.h"
@@ -217,6 +218,8 @@ void growbox_system_init(void)
   servo_init_struct.timer          = SERVO_TIMER;
   servo_init_struct.initial_angle  = SERVO_AIR_OUTLET_CLOSED;
   servo_init(&servo_init_struct);
+
+  gy21_sensor_init();
 
   // ***
   growbox_set_light(DISABLE);
@@ -525,6 +528,8 @@ static void growbox_update_measurements(void)
   // Water tank level measurement update
   measured = (double) water_get_level();
   mean_filter_update( (filter_object_t*) &growbox.water_level, measured);
+
+  gy21_update();
 
 }
 
