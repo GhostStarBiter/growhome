@@ -17,6 +17,7 @@
 #include "schedule/schedule.h"
 #include "green_house_system/green_house.h"
 #include "water/water.h"
+#include "gy21/gy21.h"
 #include "network/network.h"
 
 #include "sui.h"
@@ -57,6 +58,7 @@ typedef enum {
   WATER_LEVEL                 = 19,
   WATER_T_ON_TIME             = 21,
   WATER_CYCLE                 = 23,
+  HUMIDITY                    = 25,
 #if APPLICATION_USE_NETWORK
   ONLINE_LINK_STATUS          = 25,
   CONNECT_WIFI_AP             = 27,
@@ -103,7 +105,7 @@ typedef enum {
   PSWD_BREAK                  = 67,
   PSWD_ENTERED                = 69,
 #else
-  WORD_GROW                   = 25,
+  WORD_GROW                   = 240,
 #endif
 
 
@@ -150,8 +152,8 @@ typedef struct {
     uint8_t           active_item_index;
     display_screen_t* active_display;
 #if APPLICATION_USE_NETWORK
-    char              wifi_name[WIFI_NAME_LEN_MAX];
-    char              wifi_pswd[WIFI_PSWD_LEN_MAX];
+    char              wifi_name[SSID_LEN_MAX];
+    char              wifi_pswd[PSWD_LEN_MAX];
 #endif
     bool              wifi_enter_done;
 } system_user_interface_t;
@@ -313,6 +315,7 @@ screen_item_t go_to_next_screen = {
 //  *** MAIN SCREEN
 screen_item_t main_screen_temperature,
               main_screen_light,
+              humidity,
               water_level,
               time_hours,
               time_mins,
@@ -475,7 +478,7 @@ static void system_user_interface_startup_screen(void)
   lcd216_puts(APPLICATION_NAME_POS_X, APPLICATION_NAME_POS_Y, APPLICATION_NAME);
   lcd216_puts(APPLICATION_VERSION_POS_X, APPLICATION_VERSION_POS_Y, APPLICATION_VERSION);
 
-  vTaskDelay(2000);
+  vTaskDelay(1500);
 
   lcd216_clear();
 }
@@ -560,7 +563,7 @@ static void system_user_interface_update(void)
       index = sui.active_item_index;
       lcd216_cursor_set(  sui.active_display->item[index]->text_position.x,
                           sui.active_display->item[index]->text_position.y);
-      vTaskDelay(250);
+      vTaskDelay(100);
     }
   }
 
@@ -576,7 +579,7 @@ static void system_user_interface_update(void)
     sui.active_display->item[index]->activated = false;
   }
 
-  // if action was to change screen (and we don't know it forehand) than index must be updated!
+  // if action was to change screen (and we don't know it beforehand) than index must be updated!
   // because in screen change action pointer to active display is changed
   // and not updating the index causes Hard Fault!
   index = sui.active_item_index;
@@ -609,11 +612,11 @@ static void system_user_update_display(void)
   // ***
   display = sui.active_display;
 
-  // clean display buffer
-  for(uint8_t i = 0; i < SUI_DISPLAY_BUFFER_SIZE; i++)
-  {
-    sui.display_buffer[i] = ' ';
-  }
+//  // clean display buffer
+//  for(uint8_t i = 0; i < SUI_DISPLAY_BUFFER_SIZE; i++)
+//  {
+//    sui.display_buffer[i] = ' ';
+//  }
 
 
   for(uint8_t index=0; index < display->items_cnt; index++)
@@ -1257,6 +1260,10 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
       updated_data = (uint8_t) schedule_get_water_interval_mins();
     break;
 
+    case HUMIDITY:
+      updated_data = (uint16_t) gy21_get_humidity();
+      break;
+
 #if APPLICATION_USE_NETWORK
     case ONLINE_LINK_STATUS:
       // @todo: request to network manager
@@ -1312,6 +1319,7 @@ static void sui_main_screen_init(void)
   main_screen_temperature.action            = sui_item_action;
   main_screen_temperature.activated         = false;
 
+#if 0
   main_screen_light.id                      = LIGHT_STATUS;
   main_screen_light.type                    = DISPLAY_ITEM_TEXTUAL;
   main_screen_light.p_text                  = NULL;
@@ -1321,36 +1329,49 @@ static void sui_main_screen_init(void)
   main_screen_light.data                    = sui_update_screen_item_data(main_screen_light.id);
   main_screen_light.action                  = sui_item_action;
   main_screen_light.activated               = false;
-
-  water_level.id                            = WATER_LEVEL;
-  water_level.type                          = DISPLAY_ITEM_NUMERIC;
-  water_level.p_text                        = "WTR:";
-  water_level.text_position.x               = 0;
-  water_level.text_position.y               = LCD216_SECOND_ROW;
-  water_level.update_data                   = sui_update_screen_item_data;
-  water_level.data                          = sui_update_screen_item_data(water_level.id);
-  water_level.action                        = sui_item_action;
-  water_level.activated                     = false;
+#endif
 
   time_hours.id                             = CURRENT_TIME_HOURS;
-  time_hours.type                           = DISPLAY_ITEM_NUMERIC;       // @todo: change to DISPLAY_ITEM_NUMERIC!!!!!
+  time_hours.type                           = DISPLAY_ITEM_NUMERIC;
   time_hours.p_text                         = NULL;                      // @todo: leave empty place holder. Set numeric value in update function
-  time_hours.text_position.x                = 7;
-  time_hours.text_position.y                = LCD216_SECOND_ROW;
+  time_hours.text_position.x                = 8;
+  time_hours.text_position.y                = LCD216_FIRST_ROW;
   time_hours.update_data                    = sui_update_screen_item_data;
   time_hours.data                           = sui_update_screen_item_data(time_hours.id);
   time_hours.action                         = sui_item_action;
   time_hours.activated                      = false;
 
   time_mins.id                              = CURRENT_TIME_MINS;
-  time_mins.type                            = DISPLAY_ITEM_NUMERIC;       // @todo: change to DISPLAY_ITEM_NUMERIC!!!!!
+  time_mins.type                            = DISPLAY_ITEM_NUMERIC;
   time_mins.p_text                          = NULL;                       // @todo: leave empty place holder. Set numeric value in update function
   time_mins.text_position.x                 = 10;
-  time_mins.text_position.y                 = LCD216_SECOND_ROW;
+  time_mins.text_position.y                 = LCD216_FIRST_ROW;
   time_mins.update_data                     = sui_update_screen_item_data;
   time_mins.data                            = sui_update_screen_item_data(time_mins.id);
   time_mins.action                          = sui_item_action;
   time_mins.activated                       = false;
+
+  humidity.id                               = HUMIDITY;
+  humidity.type                             = DISPLAY_ITEM_NUMERIC;
+  humidity.p_text                           = "HMDT:";
+  humidity.text_position.x                  = 0;
+  humidity.text_position.y                  = LCD216_SECOND_ROW;
+  humidity.update_data                      = sui_update_screen_item_data;
+  humidity.data                             = sui_update_screen_item_data(main_screen_light.id);
+  humidity.action                           = NULL;
+  humidity.activated                        = false;
+
+  water_level.id                            = WATER_LEVEL;
+  water_level.type                          = DISPLAY_ITEM_NUMERIC;
+  water_level.p_text                        = "WTR:";
+  water_level.text_position.x               = 8;
+  water_level.text_position.y               = LCD216_SECOND_ROW;
+  water_level.update_data                   = sui_update_screen_item_data;
+  water_level.data                          = sui_update_screen_item_data(water_level.id);
+  water_level.action                        = sui_item_action;
+  water_level.activated                     = false;
+
+
 
 #if APPLICATION_USE_NETWORK
   online_status.id                          = ONLINE_LINK_STATUS;
@@ -1362,25 +1383,14 @@ static void sui_main_screen_init(void)
   online_status.data                        = sui_update_screen_item_data(online_status.id);
   online_status.action                      = sui_item_action;
   online_status.activated                   = false;
-#else
-  word_grow.id                              = WORD_GROW;
-  word_grow.type                            = DISPLAY_ITEM_TEXTUAL;
-  word_grow.p_text                          = "GRW";
-  word_grow.text_position.x                 = 13;
-  word_grow.text_position.y                 = LCD216_SECOND_ROW;
-  word_grow.update_data                     = NULL;
-  word_grow.data                            = 0;
-  word_grow.action                          = NULL;
-  word_grow.activated                       = false;
-
 #endif
 
   // Main screen items array init
   main_screen_items[0]                      = &main_screen_temperature;
-  main_screen_items[1]                      = &main_screen_light;
-  main_screen_items[2]                      = &water_level;
-  main_screen_items[3]                      = &time_hours;
-  main_screen_items[4]                      = &time_mins;
+  main_screen_items[1]                      = &time_hours;
+  main_screen_items[2]                      = &time_mins;
+  main_screen_items[3]                      = &humidity;
+  main_screen_items[4]                      = &water_level;
   main_screen_items[5]                      = &go_to_prev_screen;
   main_screen_items[6]                      = &go_to_next_screen;
 #if APPLICATION_USE_NETWORK
@@ -1524,7 +1534,7 @@ static void sui_light_screen_init(void)
 
   light_duration_text.id                = LIGHT_DURATION_TEXT;
   light_duration_text.type              = DISPLAY_ITEM_TEXTUAL;
-  light_duration_text.p_text            = "BE ON    HOURS";
+  light_duration_text.p_text            = "BE ON ?? HOURS";
   light_duration_text.text_position.x   = 0;
   light_duration_text.text_position.y   = LCD216_SECOND_ROW;
   light_duration_text.update_data       = NULL;
