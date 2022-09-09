@@ -23,7 +23,7 @@
 #include "servo/servo.h"
 #include "gy21/gy21.h"
 
-#if APPLICATION_USE_ONEWIRE_SENSOR
+#if GRWHS_USE_ONEWIRE_SENSOR
   #include "onewire/onewire.h"
 #endif
 
@@ -64,7 +64,7 @@ typedef struct{
     filter_object_t   water_level;                    // 0 .. 100 %
     filter_object_t   mixed_air_temp;
     filter_object_t   humidity;
-#if APPLICATION_USE_TWO_TEMPERATURE_SENSORS
+#if GRWHS_USE_TWO_LM60_TEMP_SENS
     filter_object_t   income_air_temp;
 #endif
 
@@ -170,7 +170,10 @@ void growbox_system_init(void)
 {
   servo_init_t    servo_init_struct;
 
-#if APPLICATION_USE_ONEWIRE_SENSOR
+  // ***
+  growbox.control_mode                            = CONTROL_MODE_AUTOMATIC;
+
+#if GRWHS_USE_ONEWIRE_SENSOR
   onewire_init_t  onewire_bus_init_struct;
   onewire_bus_init_struct.timer        = ONEWIRE_TIMER;
   onewire_bus_init_struct.gpio_port    = ONEWIRE_PORT;
@@ -180,17 +183,14 @@ void growbox_system_init(void)
   onewire_init(&onewire_bus_init_struct);
 #endif
 
-  // ***
-  growbox.control_mode                            = CONTROL_MODE_AUTOMATIC;
-
   // Init Humidity values filter parameters
-#if APPLICATION_USE_AM2301_TEMP
+#if GRWHS_USE_AM2301_TEMP
   growbox.humidity.measurement_buffer     = humidity_measurements_buffer;
   growbox.humidity.window_size            = MEASUREMENTS_BUFFER_SIZE;
   mean_filter_init( (filter_object_t*) &growbox.humidity);
 #endif
 
-#if APPLICATION_USE_TWO_TEMPERATURE_SENSORS
+#if GRWHS_USE_TWO_LM60_TEMP_SENS
   // Init Income air temperature value filter's parameters
   growbox.income_air_temp.measurement_buffer  = (double*) growbox.income_air_measurements_buffer;
   growbox.income_air_temp.window_size      = MEASUREMENTS_BUFFER_SIZE;
@@ -219,8 +219,9 @@ void growbox_system_init(void)
   servo_init_struct.initial_angle  = SERVO_AIR_OUTLET_CLOSED;
   servo_init(&servo_init_struct);
 
+#if GRWHS_USE_GY21_SENSOR
   gy21_sensor_init();
-
+#endif
   // ***
   growbox_set_light(DISABLE);
 
@@ -489,9 +490,13 @@ static void growbox_update_measurements(void)
 {
   double measured = 0;
 
+#if GRWHS_USE_GY21_SENSOR
+  gy21_update();
+#endif
+
   // ***
   // Inside green house air temp measurement update
-#if APPLICATION_USE_AM2301_TEMP
+#if GRWHS_USE_AM2301_TEMP
   {
     // ***
     onewire_measure();
@@ -501,7 +506,7 @@ static void growbox_update_measurements(void)
     // AM2301 (onewire) sensor
     measured = onewire_get_temperature();
   }
-#elif APPLICATION_USE_LM60_TEMP
+#elif GRWHS_USE_LM60_TEMP && (!GRWHS_USE_GY21_SENSOR)
   {
     // LM60 (analog) sensor
     // after Operational Amplifier x3
@@ -510,26 +515,29 @@ static void growbox_update_measurements(void)
     measured = (double) ((RAW_ADC_TO_MV(measured) - LM60_ZERO_DEGREES_OFFSET_CONVERTED)
                             /LM60_TEMP_SENSOR_OPAMP_MV_PER_DEG);
   }
+  #if APPLICATION_USE_TWO_TEMPERATURE_SENSORS
+    // ***
+    // Input air temperature measurement update
+    measured = mcu_adc_get_raw_data_channel_temp_2();
+    measured = (uint8_t) (RAW_ADC_TO_MV(measured)/LM60_TEMP_SENSOR_OPAMP_MV_PER_DEG);
+    mean_filter_update( (filter_object_t*) &growbox.income_air_temp, measured);
+  #endif
+
+#else // here consider we are using GY21 I2C Temperature and Humidity sensor
+    measured = (double) gy21_get_temperature();
 #endif
 
   mean_filter_update( (filter_object_t*)  &growbox.mixed_air_temp, measured);
   growbox.temperature.delta = growbox.temperature.set_point - measured;
 
 
-#if APPLICATION_USE_TWO_TEMPERATURE_SENSORS
-  // ***
-  // Input air temperature measurement update
-  measured = mcu_adc_get_raw_data_channel_temp_2();
-  measured = (uint8_t) (RAW_ADC_TO_MV(measured)/LM60_TEMP_SENSOR_OPAMP_MV_PER_DEG);
-  mean_filter_update( (filter_object_t*) &growbox.income_air_temp, measured);
-#endif
+
 
   // ***
   // Water tank level measurement update
   measured = (double) water_get_level();
   mean_filter_update( (filter_object_t*) &growbox.water_level, measured);
 
-  gy21_update();
 
 }
 

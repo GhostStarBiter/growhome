@@ -1,5 +1,27 @@
-#include "main.h"
+#include <string.h>
 
+// ***
+#include "stm32f10x.h"
+#include <system_config/FreeRTOSConfig.h>
+#include "FreeRTOS.h"
+#include "task.h"
+
+// ***
+#include "types.h"
+#include "configuration/app_config.h"
+#include "configuration/task_config.h"
+
+// ***
+#include "mcu_peripherals.h"
+
+// ***
+#include "system_user_interface/sui.h"
+
+// ***
+#include "green_house_system/green_house.h"
+
+// ***
+#include "network/network.h"
 
 //--------------------------------------------------------------------------------------------------
 static void heartbeat_blink_led(void)
@@ -70,7 +92,7 @@ int main(void)
                 (UBaseType_t) USER_INTERFACE_TASK_PRIORITY,
                 ( xTaskHandle * ) NULL);
 
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
   // ****
   xTaskCreate(  network_communication_task,
                 (const char *) "network_task",

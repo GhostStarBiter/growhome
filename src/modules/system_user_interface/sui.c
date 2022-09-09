@@ -25,12 +25,20 @@
 #include "gpio/mcu_gpio.h"      // debug
 
 
+#if GRWHS_USE_GY21_SENSOR
+  #define MAIN_SCREEN_ELEMENTS_NUMBER         7
+#else
+  #define MAIN_SCREEN_ELEMENTS_NUMBER         6
+#endif
 
-#define MAIN_SCREEN_ELEMENTS_NUMBER         8
+#if GRWHS_USE_NETWORK
+
+#endif
+
 #define TEMPERATURE_SCREEN_ELEMENTS_NUMBER  5
 #define WATER_SCREEN_ELEMENTS_NUMBER        5
 #define LIGHT_SCREEN_ELEMENTS_NUMBER        7
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
 #define NETWORK_SCREEN_ELEMENTS_NUMBER      4
 #define AP_NAME_SCREEN_ELEMENTS_NUMBER      19
 #define AP_PSWD_SCREEN_ELEMENTS_NUMBER      19
@@ -45,7 +53,7 @@
 typedef enum {
   CURRENT_TIME_HOURS          = 1,
   CURRENT_TIME_MINS           = 3,
-  LIGHT_STATUS                = 5,
+//  LIGHT_STATUS                = 5,
   LIGHT_SCREEN_TEXT           = 6,
   TIME_HOUR_SET_LIGHT_ON      = 7,
   TIME_MINUTE_SET_LIGHT_ON    = 8,
@@ -59,7 +67,7 @@ typedef enum {
   WATER_T_ON_TIME             = 21,
   WATER_CYCLE                 = 23,
   HUMIDITY                    = 25,
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
   ONLINE_LINK_STATUS          = 25,
   CONNECT_WIFI_AP             = 27,
   // Wi-Fi Access Point name symbols are to be entered separately
@@ -107,9 +115,6 @@ typedef enum {
 #else
   WORD_GROW                   = 240,
 #endif
-
-
-
 } ctrl_item_id_t;
 
 
@@ -151,7 +156,7 @@ typedef struct {
     volatile char     display_buffer[SUI_DISPLAY_BUFFER_SIZE];
     uint8_t           active_item_index;
     display_screen_t* active_display;
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
     char              wifi_name[SSID_LEN_MAX];
     char              wifi_pswd[PSWD_LEN_MAX];
 #endif
@@ -218,7 +223,7 @@ static void sui_water_screen_init(void);
 static void sui_light_screen_init(void);
 
 
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
 //--------------------------------------------------------------------------------------------------
 /// @brief  Initialize display menu connection screen
 //--------------------------------------------------------------------------------------------------
@@ -315,14 +320,16 @@ screen_item_t go_to_next_screen = {
 //  *** MAIN SCREEN
 screen_item_t main_screen_temperature,
               main_screen_light,
+#if GRWHS_USE_GY21_SENSOR
               humidity,
+#endif
               water_level,
               time_hours,
-              time_mins,
-#if APPLICATION_USE_NETWORK
-              online_status;
+              time_mins
+#if GRWHS_USE_NETWORK
+              ,online_status;
 #else
-              word_grow;
+              ;
 #endif
 
 screen_item_t* main_screen_items[MAIN_SCREEN_ELEMENTS_NUMBER];
@@ -356,7 +363,7 @@ screen_item_t* light_screen_items[LIGHT_SCREEN_ELEMENTS_NUMBER];
 
 //**************************************************************************************************
 //**************************************************************************************************
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
 //------------------------------------------------------------------------------
 //  *** NETWORK SCREEN
 screen_item_t online_connection_status,
@@ -384,16 +391,16 @@ screen_item_t ap_pswd_text,
               ap_pswd_cancel;
 
 screen_item_t* ap_pswd_screen_items[AP_PSWD_SCREEN_ELEMENTS_NUMBER];
-#endif  // APPLICATION_USE_NETWORK
+#endif  // GRWHS_USE_NETWORK
 
 
 // *** User menu displays
 display_screen_t  main_display,
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
                   network_display,
                   ap_name_display,
                   ap_pswd_display,
-#endif  // APPLICATION_USE_NETWORK
+#endif  // GRWHS_USE_NETWORK
                   temperature_display,
                   water_display,
                   light_display;
@@ -413,7 +420,7 @@ void system_user_interface_init(void)
 
   sui.active_item_index = 0;
   sui.wifi_enter_done = false;
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
   memset(sui.wifi_name, '?', WIFI_NAME_LEN_MAX);
   memset(sui.wifi_pswd, '?', WIFI_PSWD_LEN_MAX);
 #endif
@@ -476,7 +483,7 @@ static void system_user_interface_set_active_display(display_screen_t* p_set_scr
 static void system_user_interface_startup_screen(void)
 {
   lcd216_puts(APPLICATION_NAME_POS_X, APPLICATION_NAME_POS_Y, APPLICATION_NAME);
-  lcd216_puts(APPLICATION_VERSION_POS_X, APPLICATION_VERSION_POS_Y, APPLICATION_VERSION);
+  lcd216_puts(APPLICATION_VERSION_POS_X, APPLICATION_VERSION_POS_Y, GRWHS_VERSION);
 
   vTaskDelay(1500);
 
@@ -749,20 +756,20 @@ void sui_item_action(int16_t encoder_ticks)
       mcu_rtc_set_time(set_time);
     break;
 
-    case LIGHT_STATUS:
-      sui.active_display->item[index]->activated = true;
-      if(growbox_get_light_status())
-      {
-        growbox_set_light(DISABLE);
-        main_screen_light.p_text  = LIGHT_OFF_TEXT;
-      }
-      else
-      {
-        growbox_set_light(ENABLE);
-        main_screen_light.p_text  = LIGHT_ON_TEXT;
-      }
-      encoder_deactivate_button();
-      break;
+//    case LIGHT_STATUS:
+//      sui.active_display->item[index]->activated = true;
+//      if(growbox_get_light_status())
+//      {
+//        growbox_set_light(DISABLE);
+//        main_screen_light.p_text  = LIGHT_OFF_TEXT;
+//      }
+//      else
+//      {
+//        growbox_set_light(ENABLE);
+//        main_screen_light.p_text  = LIGHT_ON_TEXT;
+//      }
+//      encoder_deactivate_button();
+//      break;
 
     case TIME_HOUR_SET_LIGHT_ON:
       sui.active_display->item[index]->activated = true;
@@ -868,7 +875,7 @@ void sui_item_action(int16_t encoder_ticks)
       schedule_set_water_interval_mins(ul_tmp);
       break;
 
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
     case ONLINE_LINK_STATUS:
 
       break;
@@ -1131,7 +1138,7 @@ void sui_item_action(int16_t encoder_ticks)
 }
 
 
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
 //--------------------------------------------------------------------------------------------------
 static void sui_check_character_range(char* character)
 {
@@ -1201,16 +1208,16 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
       updated_data = mcu_rtc_get_minutes();
     break;
 
-    case LIGHT_STATUS:
-      if(growbox_get_light_status())
-      {
-        main_screen_light.p_text  = LIGHT_ON_TEXT;
-      }
-      else
-      {
-        main_screen_light.p_text  = LIGHT_OFF_TEXT;
-      }
-    break;
+//    case LIGHT_STATUS:
+//      if(growbox_get_light_status())
+//      {
+//        main_screen_light.p_text  = LIGHT_ON_TEXT;
+//      }
+//      else
+//      {
+//        main_screen_light.p_text  = LIGHT_OFF_TEXT;
+//      }
+//    break;
 
     case TIME_HOUR_SET_LIGHT_ON:
       updated_data = schedule_get_light_t_on_hour();
@@ -1264,7 +1271,7 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
       updated_data = (uint16_t) gy21_get_humidity();
       break;
 
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
     case ONLINE_LINK_STATUS:
       // @todo: request to network manager
       online_status.p_text = "OFL";
@@ -1297,7 +1304,7 @@ static void sui_init_user_menu(void)
 
   sui_light_screen_init();
 
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
   sui_network_screen_init();
   sui_ap_name_screen_init();
   sui_ap_pswd_screen_init();
@@ -1351,15 +1358,17 @@ static void sui_main_screen_init(void)
   time_mins.action                          = sui_item_action;
   time_mins.activated                       = false;
 
+#if GRWHS_USE_GY21_SENSOR
   humidity.id                               = HUMIDITY;
   humidity.type                             = DISPLAY_ITEM_NUMERIC;
   humidity.p_text                           = "HMDT:";
   humidity.text_position.x                  = 0;
   humidity.text_position.y                  = LCD216_SECOND_ROW;
   humidity.update_data                      = sui_update_screen_item_data;
-  humidity.data                             = sui_update_screen_item_data(main_screen_light.id);
+  humidity.data                             = sui_update_screen_item_data(humidity.id);
   humidity.action                           = NULL;
   humidity.activated                        = false;
+#endif
 
   water_level.id                            = WATER_LEVEL;
   water_level.type                          = DISPLAY_ITEM_NUMERIC;
@@ -1373,7 +1382,7 @@ static void sui_main_screen_init(void)
 
 
 
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
   online_status.id                          = ONLINE_LINK_STATUS;
   online_status.type                        = DISPLAY_ITEM_TEXTUAL;
   online_status.p_text                      = NULL;
@@ -1389,21 +1398,27 @@ static void sui_main_screen_init(void)
   main_screen_items[0]                      = &main_screen_temperature;
   main_screen_items[1]                      = &time_hours;
   main_screen_items[2]                      = &time_mins;
+#if GRWHS_USE_GY21_SENSOR
   main_screen_items[3]                      = &humidity;
   main_screen_items[4]                      = &water_level;
   main_screen_items[5]                      = &go_to_prev_screen;
   main_screen_items[6]                      = &go_to_next_screen;
-#if APPLICATION_USE_NETWORK
+#else
+  main_screen_items[3]                      = &water_level;
+  main_screen_items[4]                      = &go_to_prev_screen;
+  main_screen_items[5]                      = &go_to_next_screen;
+#endif
+#if GRWHS_USE_NETWORK
   main_screen_items[7]                      = &online_status;
 #else
-  main_screen_items[7]                      = &word_grow;
+
 #endif
 
   // Init main display object
   main_display.item       = main_screen_items;
   main_display.items_cnt  = MAIN_SCREEN_ELEMENTS_NUMBER;
   main_display.next       = &temperature_display;
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
   main_display.prev       = &network_display;
 #else
   main_display.prev       = &light_display;
@@ -1514,7 +1529,7 @@ static void sui_light_screen_init(void)
   light_t_on_hour.id                 = TIME_HOUR_SET_LIGHT_ON;
   light_t_on_hour.type               = DISPLAY_ITEM_NUMERIC;
   light_t_on_hour.p_text             = NULL;
-  light_t_on_hour.text_position.x    = 6;
+  light_t_on_hour.text_position.x    = strlen(light_text.p_text);
   light_t_on_hour.text_position.y    = LCD216_FIRST_ROW;
   light_t_on_hour.update_data        = sui_update_screen_item_data;
   light_t_on_hour.data               = sui_update_screen_item_data(light_t_on_hour.id);
@@ -1524,7 +1539,7 @@ static void sui_light_screen_init(void)
   light_t_on_min.id                 = TIME_MINUTE_SET_LIGHT_ON;
   light_t_on_min.type               = DISPLAY_ITEM_NUMERIC;
   light_t_on_min.p_text             = NULL;
-  light_t_on_min.text_position.x    = 9;
+  light_t_on_min.text_position.x    = strlen(light_text.p_text) + 3; // 2 symbols for hours + 1 whitespace
   light_t_on_min.text_position.y    = LCD216_FIRST_ROW;
   light_t_on_min.update_data        = sui_update_screen_item_data;
   light_t_on_min.data               = sui_update_screen_item_data(light_t_on_min.id);
@@ -1534,7 +1549,7 @@ static void sui_light_screen_init(void)
 
   light_duration_text.id                = LIGHT_DURATION_TEXT;
   light_duration_text.type              = DISPLAY_ITEM_TEXTUAL;
-  light_duration_text.p_text            = "BE ON ?? HOURS";
+  light_duration_text.p_text            = "ON ?? HOURS";
   light_duration_text.text_position.x   = 0;
   light_duration_text.text_position.y   = LCD216_SECOND_ROW;
   light_duration_text.update_data       = NULL;
@@ -1544,7 +1559,7 @@ static void sui_light_screen_init(void)
   light_duration_hours.id               = LIGHT_DURATION_HOURS;
   light_duration_hours.type             = DISPLAY_ITEM_NUMERIC;
   light_duration_hours.p_text           = NULL;
-  light_duration_hours.text_position.x  = 6;
+  light_duration_hours.text_position.x  = strlen("ON ");
   light_duration_hours.text_position.y  = LCD216_SECOND_ROW;
   light_duration_hours.update_data      = sui_update_screen_item_data;
   light_duration_hours.data             = sui_update_screen_item_data(light_duration_hours.id);
@@ -1563,7 +1578,7 @@ static void sui_light_screen_init(void)
 
   light_display.item      = light_screen_items;
   light_display.items_cnt = LIGHT_SCREEN_ELEMENTS_NUMBER;
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
   light_display.next      = &network_display;
 #else
   light_display.next      = &main_display;
@@ -1572,7 +1587,7 @@ static void sui_light_screen_init(void)
 }
 
 
-#if APPLICATION_USE_NETWORK
+#if GRWHS_USE_NETWORK
 //--------------------------------------------------------------------------------------------------
 static void sui_network_screen_init(void)
 {

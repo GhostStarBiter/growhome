@@ -35,8 +35,10 @@ void mcu_irq_init(void)
   config_irq(ONEWIRE_TIMER_IRQn,           IRQ_GPOUR_IMPORTANT,  2);                     // onewire timer
   config_irq(ONEWIRE_EXTI_IRQn,          IRQ_GPOUR_IMPORTANT,  3);                     // onewire sensor on EXTI line 2
 
+#if GRWHS_USE_NETWORK
   config_irq(ESP_UART_IRQn,         IRQ_GROUP_USUAL, 2);                            // esp8266 communication line
   config_irq(ESP_UART_DMA_IRQn,     IRQ_GROUP_USUAL, 2);                            // MCU transmit to esp8266
+#endif
   config_irq(I2C1_DMA_RX_IRQn,      IRQ_GROUP_USUAL, 3);                            // i2c sensors
   config_irq(ADC1_2_IRQn,         IRQ_GROUP_USUAL, 4);                              // analog signals measurement
   config_irq(TIM3_IRQn,           IRQ_GROUP_USUAL, 4);                              // pwm control
