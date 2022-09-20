@@ -14,6 +14,7 @@
 typedef struct {
   uint32_t    counter;
   mcu_time_t  current;
+  int         day;
 } mcu_rtc_t;
 
 
