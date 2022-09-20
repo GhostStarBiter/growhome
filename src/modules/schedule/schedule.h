@@ -6,16 +6,16 @@
 #include "rtc/mcu_rtc.h"
 
 
-typedef enum{
-  SUNDAY,
-  MONDAY,
-  TUESDAY,
-  WEDNESDAY,
-  THURSDAY,
-  FRIDAY,
-  SATURDAY,
-  DAYS_IN_WEEK
-} weekday_t;
+//typedef enum{
+//  SUNDAY,
+//  MONDAY,
+//  TUESDAY,
+//  WEDNESDAY,
+//  THURSDAY,
+//  FRIDAY,
+//  SATURDAY,
+//  DAYS_IN_WEEK
+//} weekday_t;
 
 
 typedef struct{
@@ -49,7 +49,6 @@ void schedule_update(
 /// @param
 //--------------------------------------------------------------------------------------------------
 result_t schedule_set_light_schedule(
-    weekday_t           of_week,
     activity_schedule_t new_light_schedule
 );
 
@@ -102,7 +101,6 @@ void schedule_set_light_duration_hours
 /// @brief  API to set water day schedule from outside (e.g. ESP WI-FI)
 //--------------------------------------------------------------------------------------------------
 result_t schedule_set_water_schedule(
-    weekday_t           of_week,
     activity_schedule_t new_water_schedule
 );
 
