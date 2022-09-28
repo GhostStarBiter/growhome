@@ -3331,6 +3331,8 @@ void vTaskMissedYield( void )
  * void prvIdleTask( void *pvParameters );
  *
  */
+#include "mcu_peripherals/gpio/mcu_gpio.h"
+
 static portTASK_FUNCTION( prvIdleTask, pvParameters )
 {
 	/* Stop warnings. */
@@ -3346,6 +3348,10 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 
 	for( ;; )
 	{
+
+	  // discover Idle time
+	  mcu_gpio_set_debug_pin(ENABLE);
+
 		/* See if any tasks have deleted themselves - if so then the idle task
 		is responsible for freeing the deleted task's TCB and stack. */
 		prvCheckTasksWaitingTermination();
@@ -3445,6 +3451,9 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 		}
 		#endif /* configUSE_TICKLESS_IDLE */
 	}
+
+	// discover Idle time
+	mcu_gpio_set_debug_pin(DISABLE);
 }
 /*-----------------------------------------------------------*/
 
