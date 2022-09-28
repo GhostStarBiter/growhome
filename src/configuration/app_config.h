@@ -1,5 +1,5 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//  GPIO pins assignment
+//  Application configuration file
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #ifndef APP_CONFIG_H
 #define APP_CONFIG_H
@@ -16,7 +16,7 @@
 
 
 //  APPLICATION
-#define APPLICATION_NAME                      "GROWHOME"
+#define APPLICATION_NAME                      "GrowHouse"
 #define APPLICATION_NAME_POS_X                4
 #define APPLICATION_NAME_POS_Y                0
 #define APPLICATION_VERSION_POS_X             5
@@ -42,10 +42,10 @@
 #define GRWHS_USE_GY21_SENSOR                 1
 
 // GROW HOUSE
-#define GROWBOX_MANUAL_MODE_TIMEOUT           20*1000 // [ms] 20 seconds (with respect to GROWBOX TASK CYCLE)
+#define GRWHS_MANUAL_MODE_TIMEOUT             20*1000 // [ms] 20 seconds (with respect to GROWBOX TASK CYCLE)
 #define AIR_HEATER_CYCLE_TIME                 5000    // [ms]
 
-#define GROWBOX_DEFAULT_TEMPERATURE           26
+#define GRWHS_DEFAULT_TEMP                    26
 #define AIR_REGULATION_TOLERANCE_DEGREES      0.4
 #define AIR_TEMP_PI_CTRL_KP                   10
 #define AIR_TEMP_PI_CTRL_KI                   0.001
