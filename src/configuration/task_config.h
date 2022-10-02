@@ -11,7 +11,7 @@
 
 // ***
 // Task call intervals
-#define INTERFACE_TASK_CYCLE                10      // [ms]
+#define INTERFACE_TASK_CYCLE                75      // [ms]
 #define SERVICE_TASK_CYCLE                  1000    // [ms]
 #define GROWBOX_TASK_CYCLE                  1       // [ms]
 

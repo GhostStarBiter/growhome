@@ -226,7 +226,7 @@ void growbox_system_init(void)
   growbox_set_light(DISABLE);
 
   // ***
-  growbox_set_temperature(GROWBOX_DEFAULT_TEMPERATURE);
+  growbox_set_temperature(GRWHS_DEFAULT_TEMP);
 
   // ***
   growbox.heater.duty_ms = 0;
@@ -349,7 +349,7 @@ static void growbox_control(void)
       }
 
       // wait manual mode timeout
-      if(growbox.manual_mode_timeout < GROWBOX_MANUAL_MODE_TIMEOUT)
+      if(growbox.manual_mode_timeout < GRWHS_MANUAL_MODE_TIMEOUT)
       {
         growbox.manual_mode_timeout++;
       }
