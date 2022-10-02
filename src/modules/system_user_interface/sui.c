@@ -72,6 +72,7 @@ typedef enum {
   CONNECT_WIFI_AP             = 27,
   // Wi-Fi Access Point name symbols are to be entered separately
   AP_NAME_TEXT                = 29,
+  AP_NAME_OFFSET              = 30,
   AP_NAME_SYMBOL_0            = 30,
   AP_NAME_SYMBOL_1            = 31,
   AP_NAME_SYMBOL_2            = 32,
@@ -88,7 +89,6 @@ typedef enum {
   AP_NAME_SYMBOL_13           = 43,
   AP_NAME_SYMBOL_14           = 44,
   AP_NAME_SYMBOL_15           = 45,
-
   AP_NAME_ESCAPE               = 47,
   AP_NAME_ENTERED             = 48,
 
@@ -152,15 +152,14 @@ typedef struct screen{
 
 // structure controlled by encoder input which is interrupt-processed
 typedef struct {
-    // *** INTERNAL VARIABLES
-    volatile char     display_buffer[SUI_DISPLAY_BUFFER_SIZE];
-    uint8_t           active_item_index;
+    char              display_buffer[SUI_DISPLAY_BUFFER_SIZE + 1];
     display_screen_t* active_display;
 #if GRWHS_USE_NETWORK
-    char              wifi_name[SSID_LEN_MAX];
-    char              wifi_pswd[PSWD_LEN_MAX];
-#endif
     bool              wifi_enter_done;
+    char              wifi_name[SSID_LEN_MAX + 1];  // +'\0'
+    char              wifi_pswd[PSWD_LEN_MAX + 1];
+#endif
+    uint8_t           active_item_index;
 } system_user_interface_t;
 
 
@@ -289,11 +288,6 @@ void sui_item_action
 );
 
 
-
-
-#define LIGHT_ON_TEXT                       "LT:ON"
-#define LIGHT_OFF_TEXT                      "LT:OFF"
-
 // *****************************************
 //  *** User interface structure
 volatile system_user_interface_t sui;
@@ -419,8 +413,9 @@ void system_user_interface_init(void)
   sui_init_user_menu();
 
   sui.active_item_index = 0;
-  sui.wifi_enter_done = false;
+
 #if GRWHS_USE_NETWORK
+  sui.wifi_enter_done = false;
   memset(sui.wifi_name, '?', WIFI_NAME_LEN_MAX);
   memset(sui.wifi_pswd, '?', WIFI_PSWD_LEN_MAX);
 #endif
@@ -440,42 +435,31 @@ static void system_user_interface_set_active_display(display_screen_t* p_set_scr
   sui.active_display = p_set_screen;
 
   // clean display buffer
-  for(i = 0; i < SUI_DISPLAY_BUFFER_SIZE; i++)
-  {
-    sui.display_buffer[i] = ' ';
+  for (i = 0; i < SUI_DISPLAY_BUFFER_SIZE; i++){
+    sui.display_buffer[i] = 0;
   }
 
   // prepare new display buffer
-  for(i = 0; i < sui.active_display->items_cnt; i++)
-  {
+  for (i = 0; i < sui.active_display->items_cnt; i++){
     x_pos = p_set_screen->item[i]->text_position.x;
     y_pos = p_set_screen->item[i]->text_position.y;
 
-    // to define display item's position in display buffer
-    // by multiplying x_pos by y_pos
-    // the y_pos(ROW) must be non-zero(but numeration in display is from 0)
-
-    if(y_pos < 1)
-    {
-      y_pos = 1;
-    }
-    else
+    if (y_pos > 0)
     {
       x_pos += 16;
     }
 
-    buf_position = x_pos * y_pos;
+    buf_position = x_pos;
     strncpy((char*) &sui.display_buffer[buf_position], p_set_screen->item[i]->p_text, strlen(p_set_screen->item[i]->p_text));
   }
 
   // clean-up all null-terminator characters
-  for(i = 0; i < SUI_DISPLAY_BUFFER_SIZE; i++)
-  {
-    if(sui.display_buffer[i] == '\0')
-    {
+  for (i = 0; i < SUI_DISPLAY_BUFFER_SIZE; i++){
+    if (sui.display_buffer[i] == '\0'){
       sui.display_buffer[i] = ' ';
     }
   }
+  sui.display_buffer[SUI_DISPLAY_BUFFER_SIZE] = '\0';
 }
 
 
@@ -485,7 +469,7 @@ static void system_user_interface_startup_screen(void)
   lcd216_puts(APPLICATION_NAME_POS_X, APPLICATION_NAME_POS_Y, APPLICATION_NAME);
   lcd216_puts(APPLICATION_VERSION_POS_X, APPLICATION_VERSION_POS_Y, GRWHS_VERSION);
 
-  vTaskDelay(1500);
+  vTaskDelay(1000);
 
   lcd216_clear();
 }
@@ -501,9 +485,9 @@ void system_user_interface_task(void *pvParameters)
 
   system_user_interface_startup_screen();
 
+  lcd216_cursor_set(0,0);
   lcd216_cursor_on();
   lcd216_blink_on();
-  lcd216_cursor_set(0,0);
 
   x_last_wake_time            = xTaskGetTickCount();
 
@@ -521,88 +505,69 @@ void system_user_interface_task(void *pvParameters)
 //--------------------------------------------------------------------------------------------------
 static void system_user_interface_update(void)
 {
-  uint8_t         index;
-  static int8_t   prev_ticks    = 0;
-  int8_t          current_ticks = 0;
-  int8_t          delta_ticks = 0;
-
-  index = sui.active_item_index;
+  uint8_t           index;
+  static int16_t    prev_ticks    = 0;
+  static int16_t    prev_current_ticks = 0; // :D
+  volatile int16_t  current_ticks = 0;
+  int8_t            delta_ticks = 0;
 
   // *** Check Encoder rotation
+  // NOTE: encoder ticks are zeroed each button push
   current_ticks = encoder_get_ticks();
 
-  if(current_ticks != 0)
-  {
-    if(prev_ticks != current_ticks)
-    {
-      delta_ticks = prev_ticks - current_ticks;
-    }
-
-    if(!sui.active_display->item[index]->activated)
-    {
-
-      if(delta_ticks > 0)
-      {
-        sui.active_item_index += delta_ticks;
-
-        if(sui.active_item_index >= sui.active_display->items_cnt)
-        {
-          sui.active_item_index = 0;//(sui.active_display->items_cnt);
-        }
-      }
-      else if(delta_ticks < 0)
-      {
-        if(sui.active_item_index >= 1)
-        {
-          sui.active_item_index -= 1;
-        }
-        else
-        {
-          sui.active_item_index = sui.active_display->items_cnt - 1;
-        }
-      }
-      else
-      {
-        // nothing
-      }
-
-      // Update index of currently active item
-      index = sui.active_item_index;
-      lcd216_cursor_set(  sui.active_display->item[index]->text_position.x,
-                          sui.active_display->item[index]->text_position.y);
-      vTaskDelay(100);
-    }
+  // if we came after button push
+  if (encoder_get_ticks() == 0 && prev_ticks != 0){
+    delta_ticks = 0;
+    prev_ticks = 0;
   }
+  else {
+    delta_ticks = prev_ticks - current_ticks;
+    prev_ticks = current_ticks;
+  }
+
+  index = sui.active_item_index;
 
   // *** Check button status
-  if(encoder_button_activated()
-      && (sui.active_display->item[index]->action != NULL))
+  if (encoder_button_activated())
   {
-    // Callback
-    sui.active_display->item[index]->action(delta_ticks);
+    if (sui.active_display->item[index]->action != NULL)
+      sui.active_display->item[index]->action(delta_ticks);
   }
-  else
-  {
+  else {
     sui.active_display->item[index]->activated = false;
+
+    if (delta_ticks > 0){
+      sui.active_item_index += 1;
+      if (sui.active_item_index >= sui.active_display->items_cnt){
+        sui.active_item_index = 0;
+      }
+    }
+    else if (delta_ticks < 0){
+      if (sui.active_item_index >= 1){
+        sui.active_item_index -= 1;
+      }
+      else {
+        sui.active_item_index = sui.active_display->items_cnt - 1;
+      }
+    } else { /* nothing yet*/ }
+
+    // Update index of currently active item
+    index = sui.active_item_index;
   }
 
-  // if action was to change screen (and we don't know it beforehand) than index must be updated!
-  // because in screen change action pointer to active display is changed
-  // and not updating the index causes Hard Fault!
-  index = sui.active_item_index;
-  if(sui.active_display->item[index]->activated)
-  {
-    growbox_set_control_mode(CONTROL_MODE_MANUAL);
+  lcd216_cursor_set(  sui.active_display->item[index]->text_position.x,
+                      sui.active_display->item[index]->text_position.y);
+
+  static uint8_t timeout = 0;
+
+  if (timeout > 6){
+    system_user_update_display();
+    timeout = 0;
   }
   else
   {
-    growbox_set_control_mode(CONTROL_MODE_AUTOMATIC);
+    timeout++;
   }
-
-
-  prev_ticks = current_ticks;
-
-  system_user_update_display();
 }
 
 
@@ -610,7 +575,7 @@ static void system_user_interface_update(void)
 static void system_user_update_display(void)
 {
   ctrl_item_id_t    item_id;
-  volatile display_screen_t* display;
+  display_screen_t* display;
   uint8_t           item_text_len = 0;
   char*             item_data_string;
   uint8_t           buff_pos;
@@ -618,13 +583,6 @@ static void system_user_update_display(void)
 
   // ***
   display = sui.active_display;
-
-//  // clean display buffer
-//  for(uint8_t i = 0; i < SUI_DISPLAY_BUFFER_SIZE; i++)
-//  {
-//    sui.display_buffer[i] = ' ';
-//  }
-
 
   for(uint8_t index=0; index < display->items_cnt; index++)
   {
@@ -640,19 +598,6 @@ static void system_user_update_display(void)
       display->item[index]->data = display->item[index]->update_data(item_id);
     }
 
-    // Calculate buffer insert position
-    buff_pos = display->item[index]->text_position.x;
-    // correct buffer insert position according to item's position row
-    (display->item[index]->text_position.y > 0) ? (buff_pos += 16) : (buff_pos);
-
-    n = 0;
-    m = strlen(display->item[index]->p_text);
-    while(n < m)
-    {
-      sui.display_buffer[buff_pos + n] = display->item[index]->p_text[n];
-      n++;
-    }
-
     // ***
     // CONVERT NUMBERS TO CHARACTERS
     if(display->item[index]->type == DISPLAY_ITEM_NUMERIC)
@@ -666,9 +611,6 @@ static void system_user_update_display(void)
       {
         item_text_len = 0;
       }
-
-      // string with item data(numeric) converted to text
-      item_data_string = convert_num_to_str(display->item[index]->data);
 
       buff_pos = 0;
       buff_pos = display->item[index]->text_position.x + item_text_len;
@@ -686,6 +628,8 @@ static void system_user_update_display(void)
       }
 
       m = 0;
+      // string with item data(numeric) converted to text
+      item_data_string = convert_num_to_str(display->item[index]->data);
       while(item_data_string[m])
       {
         sui.display_buffer[buff_pos + m] = item_data_string[m];
@@ -694,10 +638,18 @@ static void system_user_update_display(void)
     }
     else
     {
-      // Display item type is TEXTUAL
-      // The text of such item will be changed
-      // in item's action function and
-      // copied to display buffer in the code above
+      // Calculate buffer insert position
+      buff_pos = display->item[index]->text_position.x;
+      // correct buffer insert position according to item's position row
+      (display->item[index]->text_position.y > 0) ? (buff_pos += 16) : (buff_pos);
+
+      n = 0;
+      m = strlen(display->item[index]->p_text);
+      while(n < m)
+      {
+        sui.display_buffer[buff_pos + n] = display->item[index]->p_text[n];
+        n++;
+      }
     }
   }
 
@@ -709,9 +661,9 @@ static void system_user_update_display(void)
       sui.display_buffer[l] = ' ';
     }
   }
+  sui.display_buffer[SUI_DISPLAY_BUFFER_SIZE] = '\0';
 
   lcd216_puts(0, 0, (char*) sui.display_buffer);
-
 }
 
 
@@ -722,6 +674,8 @@ void sui_item_action(int16_t encoder_ticks)
   ctrl_item_id_t  parameter = sui.active_display->item[index]->id;
   uint32_t ul_tmp = 0;
   mcu_time_t      set_time;
+
+  growbox_set_control_mode(CONTROL_MODE_MANUAL);
 
   switch(parameter)
   {
@@ -1239,11 +1193,11 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
       updated_data = (uint16_t) growbox_get_heater_status();
       if(updated_data == ENABLE)
       {
-        heater_status.p_text  = "HTR:ON";
+        heater_status.p_text  = "HTR:+";
       }
       else
       {
-        heater_status.p_text  = "HTR:OFF";
+        heater_status.p_text  = "HTR:-";
       }
     break;
 
