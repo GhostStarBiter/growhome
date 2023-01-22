@@ -143,14 +143,15 @@
 
 // Debug pin
 #define DEBUG_PORT                          GPIOB
-#define DEBUG_PIN                           GPIO_Pin_12
+#define DEBUG_PIN                           GPIO_Pin_14
 
 // SPI interface
-#define SD_CARD_SPI_INTERFACE               SPI2
-#define SD_CARD_SPI_PORT                    GPIOB
-#define SD_CARD_SPI_CLK_PIN                 GPIO_Pin_13
-#define SD_CARD_SPI_MISO_PIN                GPIO_Pin_14
-#define SD_CARD_SPI_MOSI_PIN                GPIO_Pin_15
+#define SPI_INTERFACE                       SPI2
+#define SPI_PORT                            GPIOB
+#define SPI_NSS_PIN                         GPIO_Pin_12
+#define SPI_CLK_PIN                         GPIO_Pin_13
+//#define SPI_MISO_PIN                        GPIO_Pin_14
+#define SPI_MOSI_PIN                        GPIO_Pin_15
 
 
 // Encoder with push-button

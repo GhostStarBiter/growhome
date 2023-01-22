@@ -16,5 +16,7 @@ void mcu_init_peripherals(void)
   mcu_rtc_init();
   mcu_i2c_init();
 
+  mcu_spi_init();
+
   mcu_irq_init();
 }

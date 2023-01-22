@@ -1,12 +1,10 @@
-#include "stm32f10x_gpio.h"
+#include "mcu_gpio.h"
 
 #include "configuration/app_config.h"
 
 #include "configuration/peripherals_config.h"
 
 #include "stm32f10x_exti.h"
-
-#include "mcu_gpio.h"
 
 
 //------------------------------------------------------------------------------
@@ -206,6 +204,12 @@ static void gpio_init_communication(void)
   sGPIOInit.GPIO_Pin    = ESP_UART_RX_PIN;
   sGPIOInit.GPIO_Mode   = GPIO_Mode_IN_FLOATING;
   GPIO_Init(ESP_UART_PORT, &sGPIOInit);
+
+  sGPIOInit.GPIO_Pin = SPI_NSS_PIN | SPI_CLK_PIN | SPI_MOSI_PIN;
+  sGPIOInit.GPIO_Speed = GPIO_Speed_50MHz;
+  sGPIOInit.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(SPI_PORT, &sGPIOInit);
+
 }
 
 

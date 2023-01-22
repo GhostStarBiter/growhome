@@ -9,6 +9,7 @@
 #include "uart/mcu_uart.h"
 #include "rtc/mcu_rtc.h"
 #include "i2c/mcu_i2c.h"
+#include "spi/mcu_spi.h"
 
 
 //--------------------------------------------------------------------------------------------------

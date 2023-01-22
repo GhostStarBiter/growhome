@@ -26,6 +26,7 @@ void mcu_clock_init(void)
   RCC_APB1PeriphClockCmd( RCC_APB1Periph_TIM2 |
                           RCC_APB1Periph_TIM3 |
                           RCC_APB1Periph_USART3 |
+                          RCC_APB1Periph_SPI2 |
                           RCC_APB1Periph_I2C1, ENABLE);
 
   //RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);

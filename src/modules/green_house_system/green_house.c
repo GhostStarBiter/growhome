@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <math.h>
 
 #include "stm32f10x.h"
 
@@ -11,11 +12,13 @@
 #include "configuration/app_config.h"
 #include "configuration/task_config.h"
 #include "configuration/servo_config.h"
+#include "configuration/water_pump_config.h"
 
 // MCU includes
 #include "mcu_peripherals/adc/mcu_adc.h"
 #include "mcu_peripherals/gpio/mcu_gpio.h"
 #include "mcu_peripherals/uart/mcu_uart.h"
+#include "mcu_peripherals/spi/mcu_spi.h"
 
 // MODULES includes
 #include "water/water.h"
@@ -81,9 +84,6 @@ typedef struct{
 
     uint16_t          manual_mode_timeout;
     uint32_t          air_mix_time_counter;
-
-    uint8_t           desired_humidity;
-    int8_t            delta_humidity;                 // [-127 .. 127]
 
 } green_house_t;
 
@@ -242,6 +242,7 @@ void growbox_system_init(void)
 
   // ***
   mcu_adc_start();
+
 }
 
 
@@ -268,6 +269,7 @@ void growbox_control_rtos_task(void *pvParameters)
 
     // ***
     growbox_update_statistics();
+
   }
 
 }
@@ -390,16 +392,20 @@ static void growbox_control_temperature(void)
 {
   static uint32_t heater_cycle_counter = 0;
   double regulator_output;
+  uint16_t dac_data = 0;
 
   // ***
   regulator_output = pi_ctrl_run((pi_ctrl_object_t*) &growbox.temperature.pi_controler,
                                     growbox.temperature.set_point,
                                     growbox.mixed_air_temp.filtered);
 
-  // difference between filtered and desired temp is more than 1 C (respect to LM_60_SW_AMPLIFICATION_RATIO)
-  if(abs(growbox.mixed_air_temp.filtered - growbox.temperature.set_point) > AIR_REGULATION_TOLERANCE_DEGREES)
+  dac_data = 2048 + (uint16_t)(regulator_output*20);
+  mcu_spi_set_dac_channel_data(1, dac_data);
+  mcu_spi_dma_send_data();
+
+  if(fabs(growbox.mixed_air_temp.filtered - growbox.temperature.set_point) > AIR_REGULATION_TOLERANCE_DEGREES)
   {
-    if(regulator_output > 5.0)
+    if(regulator_output > 5.0f)
     {
       // to prevent heater overheat set maximum power of air input ventilator
       growbox_set_income_air_intensity(100);
@@ -425,7 +431,6 @@ static void growbox_control_temperature(void)
       growbox_set_heater_status(DISABLE);
       servo_set_angle(SERVO_AIR_EXCHANGE_ANGLE);
       growbox_set_income_air_intensity(75);
-
     }
   }
   else
@@ -435,7 +440,8 @@ static void growbox_control_temperature(void)
     servo_set_angle(SERVO_AIR_OUTLET_CLOSED);
   }
 
-  servo_control();
+  servo_actuate();
+  // mix air inside GrowHouse during air heating
   growbox_mix_air(growbox.heater.status);
 }
 
@@ -530,14 +536,15 @@ static void growbox_update_measurements(void)
   mean_filter_update( (filter_object_t*)  &growbox.mixed_air_temp, measured);
   growbox.temperature.delta = growbox.temperature.set_point - measured;
 
-
-
-
   // ***
   // Water tank level measurement update
   measured = (double) water_get_level();
   mean_filter_update( (filter_object_t*) &growbox.water_level, measured);
 
+  if (measured < WATER_TANK_MINIMAL_LEVEL)
+  {
+    // signal low water tank level
+  }
 
 }
 
