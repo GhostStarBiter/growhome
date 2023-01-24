@@ -21,7 +21,9 @@
 #include "green_house_system/green_house.h"
 
 // ***
+#if GRWHS_USE_NETWORK
 #include "network/network.h"
+#endif
 
 //--------------------------------------------------------------------------------------------------
 static void heartbeat_blink_led(void)

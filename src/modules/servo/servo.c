@@ -40,7 +40,7 @@ void servo_set_angle(uint8_t angle_degrees)
 
 
 //--------------------------------------------------------------------------------------------------
-void servo_control(void)
+void servo_actuate(void)
 {
   uint16_t uw_tim_cc_new_value;
   float servo_impulse_additional_duty_us;

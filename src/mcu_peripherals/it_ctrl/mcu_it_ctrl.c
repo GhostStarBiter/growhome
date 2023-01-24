@@ -43,6 +43,10 @@ void mcu_irq_init(void)
   config_irq(ADC1_2_IRQn,         IRQ_GROUP_USUAL, 4);                              // analog signals measurement
   config_irq(TIM3_IRQn,           IRQ_GROUP_USUAL, 4);                              // pwm control
   config_irq(EXTI15_10_IRQn,      IRQ_GROUP_USUAL, 5);                              // encoder signals
+
+  // External DAC
+  //config_irq(SPI2_IRQn, IRQ_GROUP_USUAL, 5);
+  //config_irq(DMA1_Channel5_IRQn, IRQ_GROUP_USUAL, 5);
 }
 
 

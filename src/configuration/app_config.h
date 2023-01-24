@@ -4,8 +4,6 @@
 #ifndef APP_CONFIG_H
 #define APP_CONFIG_H
 
-#define GRWHS   "GrowHouse"             // @TODO Rename all APPLICATION or APP name to GRWHS
-
 #include "stm32f10x.h"
 #include "system_config/stm32f10x_conf.h"
 
@@ -22,7 +20,7 @@
 #define APPLICATION_VERSION_POS_X             5
 #define APPLICATION_VERSION_POS_Y             1
 
-#define GRWHS_USE_NETWORK               0
+#define GRWHS_USE_NETWORK                     0
 #if GRWHS_USE_NETWORK
   #define GRWHS_VERSION                 "v00.02"
   #define SSID_LEN_MAX                        16
@@ -35,11 +33,19 @@
 #define GRWHS_USE_TWO_LM60_TEMP_SENS          0
 
 // Analog temeprature sensor
-#define GRWHS_USE_LM60_TEMP                   1
+#define GRWHS_USE_LM60_TEMP                   0
 // OneWire temperature and humidiry sensor
 #define GRWHS_USE_AM2301_TEMP                 (!(GRWHS_USE_LM60_TEMP))
 // GY21 - I2C bus temperature and humidity sensor
 #define GRWHS_USE_GY21_SENSOR                 1
+
+// If used I2C sensor - the only this sensor configuration
+#if GRWHS_USE_GY21_SENSOR
+#undef GRWHS_USE_LM60_TEMP
+#undef GRWHS_USE_AM2301_TEMP
+#define GRWHS_USE_LM60_TEMP                   0
+#define GRWHS_USE_AM2301_TEMP                 0
+#endif // GRWHS_USE_GY21_SENSOR
 
 // GROW HOUSE
 #define GRWHS_MANUAL_MODE_TIMEOUT             20*1000 // [ms] 20 seconds (with respect to GROWBOX TASK CYCLE)
@@ -64,6 +70,8 @@
 #define WATER_T_ON_SEC_MAX                    59  // [sec]
 #define WATER_INTERVAL_MINS_DEFAULT           3   // [mins]
 #define WATER_INTERVAL_MINS_MAX               90  // [mins]
+
+
 
 
 #endif // APP_CONFIG_H

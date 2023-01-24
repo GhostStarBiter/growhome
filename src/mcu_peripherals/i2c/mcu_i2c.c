@@ -21,6 +21,9 @@ void mcu_i2c_init(void)
   mcu_i2c.slave = NULL;
   mcu_i2c.busy = 0;
 
+  I2C_DeInit(I2C1);
+  DMA_DeInit(I2C1_DMA_Channel);
+
   I2C_ConfigStruct.I2C_ClockSpeed = 400000;                                     // 400 kHz
   I2C_ConfigStruct.I2C_Mode = I2C_Mode_I2C;
   I2C_ConfigStruct.I2C_OwnAddress1 = 0x77;
@@ -122,7 +125,7 @@ void DMA1_Channel7_IRQHandler(void)
 {
   if (DMA_GetFlagStatus(DMA1_FLAG_TC7))
   {
-    mcu_gpio_set_debug_pin(ENABLE);
+    //mcu_gpio_set_debug_pin(ENABLE);
     /* Clear transmission complete flag */
     DMA_ClearFlag(DMA1_FLAG_TC7);
 
@@ -134,6 +137,6 @@ void DMA1_Channel7_IRQHandler(void)
     mcu_i2c.busy = 0;
     mcu_i2c.slave->recvd_flag = 1;
 
-    mcu_gpio_set_debug_pin(DISABLE);
+    //mcu_gpio_set_debug_pin(DISABLE);
   }
 }

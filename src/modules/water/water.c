@@ -16,7 +16,7 @@ typedef struct {
 water_t water;
 
 //--------------------------------------------------------------------------------------------------
-void water_init(void)
+void water_pump_init(void)
 {
   (void) water_get_level();
   water_set_pump_power(WATER_PUMP_DEFAULT_POWER);

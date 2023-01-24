@@ -30,7 +30,7 @@ void servo_set_angle
 //--------------------------------------------------------------------------------------------------
 /// @brief  ms-called function to control servo angle position
 //--------------------------------------------------------------------------------------------------
-void servo_control(void);
+void servo_actuate(void);
 
 
 #endif // SERVO_H
