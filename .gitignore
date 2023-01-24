@@ -1,4 +1,5 @@
 .gitignore
+.cproject
 .DS_Store
 documentation/.DS_Store
 src/.DS_Store
@@ -8,3 +9,9 @@ Debug
 /.metadata/
 /Debug basic/
 /dbg_basic/
+.settings/language.settings.xml
+CMSIS/.DS_Store
+CMSIS/CM3/.DS_Store
+CMSIS/CM3/DeviceSupport/.DS_Store
+CMSIS/CM3/DeviceSupport/ST/.DS_Store
+growhome\ Debug.cfg
