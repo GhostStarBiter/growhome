@@ -7,18 +7,20 @@
 #define SECONDS_PER_HOUR                  3600
 
 typedef struct {
+  void (*day_change_callback)(int);
   uint32_t    counter;
   mcu_time_t  current;
-  int         day;
+  uint16_t    day;
 } mcu_rtc_t;
 
 volatile mcu_rtc_t mcu_rtc;
 
 //--------------------------------------------------------------------------------------------------
-void mcu_rtc_init(void)
+void mcu_rtc_init(void(*new_day_callback)(int))
 {
   mcu_rtc.day = 1;
   mcu_rtc_reset_counter();
+  mcu_rtc.day_change_callback = new_day_callback;
 }
 
 
@@ -63,6 +65,12 @@ void mcu_rtc_set_time(mcu_time_t set_time)
 uint16_t mcu_rtc_get_day(void)
 {
   return mcu_rtc.day;
+}
+
+void mcu_rtc_set_day(uint16_t day_cnt)
+{
+  mcu_rtc.day = day_cnt;
+  mcu_rtc.day_change_callback(day_cnt);
 }
 
 

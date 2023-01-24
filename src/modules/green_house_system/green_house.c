@@ -13,6 +13,7 @@
 #include "configuration/task_config.h"
 #include "configuration/servo_config.h"
 #include "configuration/water_pump_config.h"
+#include "configuration/grow_plan.h"
 
 // MCU includes
 #include "mcu_peripherals/adc/mcu_adc.h"
@@ -44,12 +45,7 @@ typedef struct {
   uint16_t        cycle_counter_ms;
 } heater_t;
 
-typedef enum {
-  SEED,
-  SPROUT,
-  PLANT,
-  BLOOM
-} grow_mode_t;
+
 
 
 typedef struct {
@@ -61,6 +57,8 @@ typedef struct {
 
 typedef struct{
     control_mode_t    control_mode;                           // MANUAL/AUTOMATIC
+    grow_mode_t       grow_mode;
+    int               day;
     heater_t          heater;
     temperature_t     temperature;
 
@@ -71,7 +69,9 @@ typedef struct{
     filter_object_t   income_air_temp;
 #endif
 
+#if GRWHS_USE_TWO_LM60_TEMP_SENS
     double income_air_measurements_buffer [MEASUREMENTS_BUFFER_SIZE];
+#endif
     double mixed_air_measurements_buffer  [MEASUREMENTS_BUFFER_SIZE];
     double humidity_measurements_buffer   [MEASUREMENTS_BUFFER_SIZE];
     double water_level_measurements_buffer[WATER_TANK_LEVEL_MEAS_BUFF_SIZE];
@@ -162,7 +162,36 @@ static void growbox_mix_air(bool temp_request);
 
 volatile green_house_t growbox;
 
+void growbox_update_schedule(int day_cnt)
+{
+  activity_schedule_t new_light_schedule;
+  activity_schedule_t new_water_schedule;
 
+  // set temp for period
+  // set light schedule for period
+  // set water schedule for period
+  if (day_cnt < SEED_PERIOD){
+    growbox.grow_mode = SEED;
+  } else if(day_cnt < SPROUT_PERIOD){
+    growbox.grow_mode = SPROUT;
+  } else { // PLANT_PERIOD
+    growbox.grow_mode = PLANT;
+  }
+
+  grow_plan_update_settings(growbox.grow_mode,
+                                (double*) &growbox.temperature.set_point,
+                                &new_light_schedule,
+                                &new_water_schedule);
+  schedule_set_light_schedule(new_light_schedule);
+  schedule_set_water_schedule(new_water_schedule);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+grow_mode_t growbox_get_grow_mode(void)
+{
+  return growbox.grow_mode;
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -172,6 +201,7 @@ void growbox_system_init(void)
 
   // ***
   growbox.control_mode                            = CONTROL_MODE_AUTOMATIC;
+  growbox.grow_mode = SEED;
 
 #if GRWHS_USE_ONEWIRE_SENSOR
   onewire_init_t  onewire_bus_init_struct;
@@ -219,6 +249,9 @@ void growbox_system_init(void)
   servo_init_struct.initial_angle  = SERVO_AIR_OUTLET_CLOSED;
   servo_init(&servo_init_struct);
 
+  // ***
+  water_pump_init();
+
 #if GRWHS_USE_GY21_SENSOR
   gy21_sensor_init();
 #endif
@@ -234,8 +267,7 @@ void growbox_system_init(void)
 
   growbox.air_mix_time_counter = 0;
 
-  // ***
-  water_init();
+  mcu_rtc_init(growbox_update_schedule);
 
   // ***
   schedule_init();

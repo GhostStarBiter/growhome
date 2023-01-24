@@ -3,9 +3,15 @@
 
 typedef enum {
   CONTROL_MODE_MANUAL    = 0,
-  CONTROL_MODE_AUTOMATIC = 1,
-  CONTROL_MODE_REMOTE    = 2
+  CONTROL_MODE_AUTOMATIC,
+  CONTROL_MODE_REMOTE
 } control_mode_t;
+
+typedef enum {
+  SEED = 0,
+  SPROUT,
+  PLANT
+} grow_mode_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -75,6 +81,11 @@ void growbox_set_temperature
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 FunctionalState growbox_get_heater_status(void);
+
+
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+grow_mode_t growbox_get_grow_mode(void);
 
 
 #endif  // GROW_GREEN_H

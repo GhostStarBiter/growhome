@@ -64,7 +64,6 @@ void schedule_update
 )
 {
   mcu_time_t current_time = mcu_rtc_get_time();
-  uint16_t day = mcu_rtc_get_day();
 
   check_light_schedule(
       current_time,

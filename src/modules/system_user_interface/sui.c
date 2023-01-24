@@ -34,7 +34,7 @@
 #if GRWHS_USE_NETWORK
 
 #endif
-
+#define GROW_SCREEN_ELEMENTS_NUMBER         4
 #define TEMPERATURE_SCREEN_ELEMENTS_NUMBER  5
 #define WATER_SCREEN_ELEMENTS_NUMBER        5
 #define LIGHT_SCREEN_ELEMENTS_NUMBER        7
@@ -112,7 +112,10 @@ typedef enum {
 
   PSWD_BREAK                  = 67,
   PSWD_ENTERED                = 69,
-#else
+  #else
+  GROW_DAY                    = 71,
+  GROW_PERIOD                 = 73,
+
   WORD_GROW                   = 240,
 #endif
 } ctrl_item_id_t;
@@ -202,6 +205,12 @@ static void system_user_interface_set_active_display
 /// @brief  Initialize display menu main screen
 //--------------------------------------------------------------------------------------------------
 static void sui_main_screen_init(void);
+
+
+//--------------------------------------------------------------------------------------------------
+/// @brief  Initialize display menu grow screen
+//--------------------------------------------------------------------------------------------------
+static void sui_grow_screen_init(void);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -328,6 +337,14 @@ screen_item_t main_screen_temperature,
 
 screen_item_t* main_screen_items[MAIN_SCREEN_ELEMENTS_NUMBER];
 
+
+//------------------------------------------------------------------------------
+//  *** GROW SCREEN
+screen_item_t grow_day,
+              grow_period;
+
+screen_item_t* grow_screen_items[GROW_SCREEN_ELEMENTS_NUMBER];
+
 //------------------------------------------------------------------------------
 //  *** TEMPERATURE SCREEN
 screen_item_t temperature,
@@ -395,6 +412,7 @@ display_screen_t  main_display,
                   ap_name_display,
                   ap_pswd_display,
 #endif  // GRWHS_USE_NETWORK
+                  grow_display,
                   temperature_display,
                   water_display,
                   light_display;
@@ -507,7 +525,6 @@ static void system_user_interface_update(void)
 {
   uint8_t           index;
   static int16_t    prev_ticks    = 0;
-  static int16_t    prev_current_ticks = 0; // :D
   volatile int16_t  current_ticks = 0;
   int8_t            delta_ticks = 0;
 
@@ -551,9 +568,9 @@ static void system_user_interface_update(void)
       }
     } else { /* nothing yet*/ }
 
-    // Update index of currently active item
-    index = sui.active_item_index;
   }
+  // Update index of currently active item
+  index = sui.active_item_index;
 
   lcd216_cursor_set(  sui.active_display->item[index]->text_position.x,
                       sui.active_display->item[index]->text_position.y);
@@ -766,7 +783,7 @@ void sui_item_action(int16_t encoder_ticks)
       temperature.data += encoder_ticks;
       main_screen_temperature.data = temperature.data;
 
-      if(temperature.data > 35)   // @TODO: max temp make a parameter
+      if(temperature.data > 34)   // @TODO: max temp make a parameter
       {
         temperature.data = 35;
         main_screen_temperature.data = temperature.data;
@@ -827,6 +844,18 @@ void sui_item_action(int16_t encoder_ticks)
       }
       water_t_cycle.data = ul_tmp;
       schedule_set_water_interval_mins(ul_tmp);
+      break;
+
+    case GROW_DAY:
+      sui.active_display->item[index]->activated = true;
+      ul_tmp = mcu_rtc_get_day();
+      ul_tmp += encoder_ticks;
+      if(ul_tmp < 1)
+      {
+        ul_tmp = 1;
+      }
+      grow_day.data = (uint16_t) ul_tmp;
+      mcu_rtc_set_day(ul_tmp);
       break;
 
 #if GRWHS_USE_NETWORK
@@ -1225,6 +1254,27 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
       updated_data = (uint16_t) gy21_get_humidity();
       break;
 
+    case GROW_DAY:
+      updated_data = (uint16_t) mcu_rtc_get_day();
+      break;
+
+    case GROW_PERIOD:
+      switch(growbox_get_grow_mode())
+      {
+        case SEED:
+          grow_period.p_text = "SEED  ";
+          break;
+
+        case SPROUT:
+          grow_period.p_text = "SPROUT";
+          break;
+
+        case PLANT:
+          grow_period.p_text = "PLANT ";
+          break;
+      }
+      break;
+
 #if GRWHS_USE_NETWORK
     case ONLINE_LINK_STATUS:
       // @todo: request to network manager
@@ -1251,6 +1301,8 @@ static uint16_t sui_update_screen_item_data(ctrl_item_id_t item_id)
 static void sui_init_user_menu(void)
 {
   sui_main_screen_init();
+
+  sui_grow_screen_init();
 
   sui_temperature_screen_init();
 
@@ -1364,19 +1416,51 @@ static void sui_main_screen_init(void)
 #endif
 #if GRWHS_USE_NETWORK
   main_screen_items[7]                      = &online_status;
-#else
-
 #endif
 
   // Init main display object
   main_display.item       = main_screen_items;
   main_display.items_cnt  = MAIN_SCREEN_ELEMENTS_NUMBER;
-  main_display.next       = &temperature_display;
+  main_display.next       = &grow_display;
 #if GRWHS_USE_NETWORK
   main_display.prev       = &network_display;
 #else
   main_display.prev       = &light_display;
 #endif
+}
+
+
+static void sui_grow_screen_init(void)
+{
+  grow_day.id = GROW_DAY;
+  grow_day.type = DISPLAY_ITEM_NUMERIC;
+  grow_day.p_text = "GROW DAY:";
+  grow_day.text_position.x = 0;
+  grow_day.text_position.y = LCD216_FIRST_ROW;
+  grow_day.update_data = sui_update_screen_item_data;
+  grow_day.data = sui_update_screen_item_data(grow_day.id);
+  grow_day.action = sui_item_action;
+  grow_day.activated = false;
+
+  grow_period.id = GROW_PERIOD;
+  grow_period.type = DISPLAY_ITEM_TEXTUAL;
+  grow_period.p_text = NULL;
+  grow_period.text_position.x = 0;
+  grow_period.text_position.y = LCD216_SECOND_ROW;
+  grow_period.update_data = sui_update_screen_item_data;
+  grow_period.data = sui_update_screen_item_data(grow_period.id);
+  grow_period.action = NULL;
+  grow_period.activated = false;
+
+  grow_screen_items[0] = &grow_day;
+  grow_screen_items[1] = &grow_period;
+  grow_screen_items[2] = &go_to_prev_screen;
+  grow_screen_items[3] = &go_to_next_screen;
+
+  grow_display.item = grow_screen_items;
+  grow_display.items_cnt = GROW_SCREEN_ELEMENTS_NUMBER;
+  grow_display.next = &temperature_display;
+  grow_display.prev = &main_display;
 }
 
 
@@ -1417,7 +1501,7 @@ static void sui_temperature_screen_init(void)
   temperature_display.item      = temperature_screen_items;
   temperature_display.items_cnt = TEMPERATURE_SCREEN_ELEMENTS_NUMBER;
   temperature_display.next      = &water_display;
-  temperature_display.prev      = &main_display;
+  temperature_display.prev      = &grow_display;
 }
 
 
