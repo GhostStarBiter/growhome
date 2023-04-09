@@ -128,30 +128,21 @@ static void growbox_control_light(void);
 /// @brief  Set Income air ventilator intensity
 /// @param  Ventilator power to set in percents
 //--------------------------------------------------------------------------------------------------
-static void growbox_set_income_air_intensity
-(
-    uint8_t intensity_percents
-);
+static void growbox_set_income_air_intensity(uint8_t intensity_percents);
 
 
 //--------------------------------------------------------------------------------------------------
 /// @brief  Set status of Air Mixing ventilator
 /// @param  Air Mixing ventilator status (ENABLE/DISABLE)
 //--------------------------------------------------------------------------------------------------
-static void growbox_set_air_mixing_status
-(
-    FunctionalState e_air_mixing_status
-);
+static void growbox_set_air_mixing_status(FunctionalState e_air_mixing_status);
 
 
 //--------------------------------------------------------------------------------------------------
 /// @brief  Set status of Air Heater
 /// @param  Air Heater status (ENABLE/DISABLE)
 //--------------------------------------------------------------------------------------------------
-static void growbox_set_heater_status
-(
-    FunctionalState heater_state
-);
+static void growbox_set_heater_status(FunctionalState heater_state);
 
 
 //--------------------------------------------------------------------------------------------------

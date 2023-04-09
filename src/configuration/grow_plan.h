@@ -31,13 +31,12 @@ void grow_plan_update_settings( grow_mode_t grow_mode,
       break;
 
     case SPROUT:
-      *temperature = 25;
+      *temperature = 26;
 
       light->on_time.hour = 6;
       light->on_time.min = 0;
       light->on_time.sec = 0;
-      light->interval_minutes = 6*60;
-      light->duration_sec = 10*60*60;
+      light->duration_sec = 14*60*60;
 
       water->on_time.hour = 6;
       water->on_time.min = 0;
@@ -52,13 +51,12 @@ void grow_plan_update_settings( grow_mode_t grow_mode,
       light->on_time.hour = 6;
       light->on_time.min = 0;
       light->on_time.sec = 0;
-      light->interval_minutes = 6*60;
-      light->duration_sec = 12*60*60;
+      light->duration_sec = GROWBOX_MAX_LIGHT_ON_HOURS*60*60;
 
       water->on_time.hour = 6;
       water->on_time.min = 0;
       water->on_time.sec = 0;
-      water->interval_minutes = 2*60;  // water the sprouts one time for 3 hours
+      water->interval_minutes = 3*60;  // water the sprouts one time for 3 hours
       water->duration_sec = 15;
       break;
   }
