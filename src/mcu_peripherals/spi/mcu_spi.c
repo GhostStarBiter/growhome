@@ -1,3 +1,5 @@
+#include "stm32f10x_dma.h"
+#include "stm32f10x_spi.h"
 #include "mcu_spi.h"
 #include "configuration/peripherals_config.h"
 #include "mcu_peripherals/gpio/mcu_gpio.h"

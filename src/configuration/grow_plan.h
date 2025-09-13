@@ -56,7 +56,7 @@ void grow_plan_update_settings( grow_mode_t grow_mode,
       water->on_time.hour = 6;
       water->on_time.min = 0;
       water->on_time.sec = 0;
-      water->interval_minutes = 3*60;  // water the sprouts one time for 3 hours
+      water->interval_minutes = 3*60;  // water the plant one time for 3 hours
       water->duration_sec = 15;
       break;
   }

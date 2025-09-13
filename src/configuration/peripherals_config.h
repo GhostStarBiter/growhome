@@ -1,6 +1,9 @@
 #ifndef PERIPHERALS_CONFIG_H
 #define PERIPHERALS_CONFIG_H
 
+#include "stm32f10x_gpio.h"
+#include "stm32f10x_exti.h"
+
 //          Servo motor
 #define SERVO_GPIO_PORT                     GPIOA
 #define SERVO_GPIO_PIN                      GPIO_Pin_0

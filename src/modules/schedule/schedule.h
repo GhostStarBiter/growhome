@@ -6,18 +6,6 @@
 #include "rtc/mcu_rtc.h"
 
 
-//typedef enum{
-//  SUNDAY,
-//  MONDAY,
-//  TUESDAY,
-//  WEDNESDAY,
-//  THURSDAY,
-//  FRIDAY,
-//  SATURDAY,
-//  DAYS_IN_WEEK
-//} weekday_t;
-
-
 typedef struct{
     mcu_time_t  on_time;            // used for light/water schedule
     mcu_time_t  expected_endtime;   // used for light/water schedule control

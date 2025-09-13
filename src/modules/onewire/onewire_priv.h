@@ -4,9 +4,6 @@
 #include "stm32f10x.h"
 #include "stm32f10x_tim.h"
 
-// RTOS timers
-#include "timers.h"
-
 #include "onewire.h"
 
 #define ONEWIRE_TIMER_RUN_REPEAT            pdTRUE

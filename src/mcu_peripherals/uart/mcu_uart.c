@@ -1,4 +1,6 @@
 #include "stm32f10x.h"
+#include "stm32f10x_usart.h"
+#include "stm32f10x_dma.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "configuration/peripherals_config.h"

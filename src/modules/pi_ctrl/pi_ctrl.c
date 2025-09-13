@@ -2,7 +2,7 @@
 
 
 //--------------------------------------------------------------------------------------------------
-// Set saturation_min and saturation_max from outside independently for every object
+// Set saturation_min and saturation_max independently for every object
 //  Example:
 //    pi_ctrl_object_t object;
 //    object.pi_controller.kp = proportional_coeff;

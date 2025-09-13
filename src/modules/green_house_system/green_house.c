@@ -4,6 +4,7 @@
 #include "stm32f10x.h"
 
 // FreeRTOS includes
+#include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
 

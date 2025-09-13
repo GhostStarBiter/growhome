@@ -1,6 +1,9 @@
 #ifndef FILTER_H
 #define FILTER_H
 
+#include <stdint.h>
+#include <stddef.h>
+
 typedef struct {
     double*     measurement_buffer;
     uint8_t     insert_index;
