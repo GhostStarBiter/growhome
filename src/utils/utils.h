@@ -1,6 +1,8 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef GROWHOME_UTILS_H
+#define GROWHOME_UTILS_H
 
+#include <stdint.h>
+#include <stddef.h>
 
 //--------------------------------------------------------------------------------------------------
 /// @brief  Function converts numeric argument to string of characters
@@ -10,4 +12,4 @@
 char* convert_num_to_str(uint16_t digital);
 
 
-#endif // UTILS_H
+#endif // GROWHOME_UTILS_H

@@ -7,7 +7,6 @@
 #define AT_ECHO_OFF                         "E0"
 
 #define AT_RESET                            "+RST"
-//#define AT+CIPSTART                         "TCP","192.168.101.110\", 8080"    // protocol, server ip and port
 
 #define AT_REQEST_ENDING                    "\r\n"                              // CR+LF
 #define AT_LF_CODE                          0x0A
@@ -18,6 +17,7 @@
 #define ESP_SET_WIFI_MODE_SOFT_AP           "+CWMODE_CUR=3"
 #define ESP_JOIN_AP                         "+CWJAP="
 #define ESP_ENABLE_WPS_MODE                 "+WPS=<enable>"
+#define ESP_LIST_AVAILABLE_AP               "+CWLAP"
 
 
 

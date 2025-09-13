@@ -26,8 +26,9 @@ void mcu_tim_init(void)
   init_servo_timer();
 
   init_pwm_timer();
-
+#if GRWHS_USE_ONEWIRE_SENSOR
   init_onewire_timer();
+#endif
 }
 
 

@@ -3,8 +3,6 @@
 
 #include "stm32f10x.h"
 
-#include "timers.h"
-
 typedef struct
 {
     TIM_TypeDef*  timer;

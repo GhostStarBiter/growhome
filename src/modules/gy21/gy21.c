@@ -1,9 +1,11 @@
+#include <stdint.h>
+#include <stddef.h>
 #include "i2c/mcu_i2c.h"
 
 #include "gy21.h"
 
 #define GY21_READOUT_PERIOD   1000  // [ms] period between temp and humidity readout
-#define GY21_DATA_SIZE_BYTES  2     // both temp and humidity are 16-bit values
+#define GY21_DATA_SIZE_BYTES  2     // [bytes] each return value of temperature or humidity is 16-bit long
 
 typedef enum {
   READ_TEMP = GY21_READ_TEMP,
@@ -39,8 +41,8 @@ uint32_t gy21_sensor_init(void)
 {
   gy21.i2c.addr       = GY21_BUS_ADDRESS;
   gy21.i2c.len        = GY21_DATA_SIZE_BYTES;
-  gy21.i2c.buf        = NULL;                 // will be filled later
-  gy21.i2c.sub_addr   = 0;                    // will be filled later
+  gy21.i2c.buf        = NULL;                 // see gy21_update() 
+  gy21.i2c.sub_addr   = 0;                    // 
 
   gy21.period = GY21_READOUT_PERIOD + 1;
 
@@ -57,10 +59,8 @@ void gy21_update(void)
 {
   uint8_t meas_data_index = 0;
 
-  if(gy21.period > GY21_READOUT_PERIOD)
-  {
-    switch(gy21.curr_measure)
-    {
+  if (gy21.period > GY21_READOUT_PERIOD) {
+    switch (gy21.curr_measure) {
     case READ_TEMP:
       gy21.i2c.sub_addr = READ_TEMP;
       meas_data_index = TEMP_INDEX;
@@ -140,12 +140,12 @@ static void gy21_calculate_humidity(void)
 double gy21_get_temperature(void)
 {
   return gy21.temperature;
-};
+}
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 double gy21_get_humidity(void)
 {
   return gy21.humidity;
-};
+}
 

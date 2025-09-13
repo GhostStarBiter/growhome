@@ -1,17 +1,6 @@
 .gitignore
-.cproject
-.DS_Store
-documentation/.DS_Store
-src/.DS_Store
-src/mcu_peripherals/.DS_Store
-src/modules/.DS_Store
-Debug
-/.metadata/
-/Debug basic/
-/dbg_basic/
-.settings/language.settings.xml
+.vscode
+*.o
+build
+STM32F10x_StdPeriph_Driver/.DS_Store
 CMSIS/.DS_Store
-CMSIS/CM3/.DS_Store
-CMSIS/CM3/DeviceSupport/.DS_Store
-CMSIS/CM3/DeviceSupport/ST/.DS_Store
-growhome\ Debug.cfg

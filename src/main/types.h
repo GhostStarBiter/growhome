@@ -3,8 +3,6 @@
 
 #include <stdbool.h>
 
-#define ZERO                                0
-
 typedef enum{
   result_fail = 0,
   result_success

@@ -1,4 +1,7 @@
+#include <stddef.h>
+
 #include "stm32f10x_i2c.h"
+#include "stm32f10x_dma.h"
 #include "configuration/peripherals_config.h"
 #include "mcu_i2c.h"
 

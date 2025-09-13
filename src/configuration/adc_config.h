@@ -2,7 +2,7 @@
 #define ADC_CONFIG_H
 
 #define ADC_MAX_INPUT_VOLTAGE               3300  // mV
-#define ADC_MAX_OUTPUT_RAW_VALUE            4096  // n/a
+#define ADC_MAX_OUTPUT_RAW_VALUE            4095  // n/a
 
 #define TEMP_1_CONVERSION_ORDER             1
 #define CHANNEL_TEMP_1                      (TEMP_1_CONVERSION_ORDER - 1)

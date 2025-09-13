@@ -1,6 +1,5 @@
-#include "utils_priv.h"
-
-
+#include <string.h>
+#include "utils.h"
 char converted_string[17];  // LCD 2x16 can take 16 characters in line
 
 //--------------------------------------------------------------------------------------------------

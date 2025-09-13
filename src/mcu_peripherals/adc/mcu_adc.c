@@ -1,5 +1,5 @@
 #include "stm32f10x_adc.h"
-
+#include "stm32f10x_dma.h"
 #include "mcu_adc.h"
 
 #include "configuration/adc_config.h"
