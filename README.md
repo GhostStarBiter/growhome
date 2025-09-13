@@ -42,16 +42,6 @@ and control environmental conditions.
     -   `system_user_interface_task`: LCD display, encoder interaction.
     -   `network_communication_task`: WiFi connectivity (ESP8266, TBD).
 
-## Development Stages
-
-1.  First housing: aluminium/plywood, analog sensors, external heater &
-    servo-controlled vent.
-2.  Second housing: wooden frame with insulation, LED grow strips, I2C
-    GY21 sensor.
-3.  PCB design: relay-based 230V load control, MOSFET-driven low voltage
-    actuators.
-4.  Testing & calibration with custom PCB, FreeRTOS firmware.
-
 ## Results
 
 -   Successfully controls temperature, humidity, lighting, and watering
